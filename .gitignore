@@ -30,3 +30,5 @@ benchmarks/raw/*.json
 # WASM cache
 .mediapipe/
 docs/
+
+.kiro/
