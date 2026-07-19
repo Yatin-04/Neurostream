@@ -9,7 +9,11 @@ import useCognitiveLoop from '../hooks/useCognitiveLoop';
 import useAttention from '../hooks/useAttention';
 import useVAD from '../hooks/useVAD';
 import useWebRTCStats from '../hooks/useWebRTCStats';
+import useDeviceBenchmark from '../hooks/useDeviceBenchmark';
+import useBenchmarkMode from '../hooks/useBenchmarkMode';
 import TelemetryHUD from '../components/TelemetryHUD';
+import BenchmarkHUD from '../components/BenchmarkHUD';
+import { BandwidthSavedCounter, SessionSummary } from '../components/BandwidthSaved';
 
 const DEFAULT_ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -42,12 +46,26 @@ export default function RoomPage() {
   const screenStreamRef = useRef(null);
   const screenSenders = useRef(new Map());
   const [linkCopied, setLinkCopied] = useState(false);
+  const [pinnedTile, setPinnedTile] = useState(null);
+  const [peerScreenSharing, setPeerScreenSharing] = useState(false);
+  const [sessionStart] = useState(Date.now());
+  const [showSummary, setShowSummary] = useState(false);
+  const [sessionData, setSessionData] = useState(null); // true if any remote peer is sharing
   // Buffer ICE candidates until remote description is set
   const iceCandidateQueue = useRef(new Map());
 
   // AI Cognitive loop toggles and states
   const [aiEnabled, setAiEnabled] = useState(true);
   const [activeSenders, setActiveSenders] = useState([]);
+
+  // F8: Device benchmark — disable AI on low-end devices
+  const { benchmarkComplete, isLowEnd, isBenchmarking } = useDeviceBenchmark(localStream);
+
+  useEffect(() => {
+    if (benchmarkComplete && isLowEnd) {
+      setAiEnabled(false);
+    }
+  }, [benchmarkComplete, isLowEnd]);
 
   // F3: Machine Learning Attention Sensor
   const { isAttentive, isModelLoaded: isFaceModelLoaded } = useAttention(localStream);
@@ -62,6 +80,14 @@ export default function RoomPage() {
   useEffect(() => { localStreamRef.current = localStream; }, [localStream]);
   useEffect(() => { screenStreamRef.current = screenStream; }, [screenStream]);
 
+  // Detect if any remote peer is screen sharing (video-only stream)
+  useEffect(() => {
+    const hasRemoteScreen = [...remoteStreams.values()].some(
+      (s) => s.getVideoTracks().length > 0 && s.getAudioTracks().length === 0
+    );
+    setPeerScreenSharing(hasRemoteScreen);
+  }, [remoteStreams]);
+
   // Sync senders whenever peers or streams change
   const syncSenders = useCallback(() => {
     const senders = [];
@@ -71,6 +97,17 @@ export default function RoomPage() {
     setActiveSenders(senders);
   }, []);
 
+  // ── Scripted Benchmark Mode (F10) — activated via ?benchmark=true
+  const isBenchmarkParam = new URLSearchParams(window.location.search).has('benchmark');
+  const {
+    isBenchmarkActive, isComplete: benchmarkDone, scriptedAttentive, scriptedSpeaking,
+    progress: benchProgress, elapsedSec: benchElapsed, currentPhase: benchPhase, exportResults,
+  } = useBenchmarkMode(isBenchmarkParam, history);
+
+  // Override sensor outputs during benchmark
+  const effectiveAttentive = scriptedAttentive !== null ? scriptedAttentive : isAttentive;
+  const effectiveSpeaking = scriptedSpeaking !== null ? scriptedSpeaking : isSpeaking;
+
   // ── Cognitive Control Loop (F5) ────────────────────────────────
   const {
     isThrottled,
@@ -78,8 +115,8 @@ export default function RoomPage() {
     bytesSaved,
     currentMode
   } = useCognitiveLoop({
-    isAttentive,
-    isSpeaking,
+    isAttentive: effectiveAttentive,
+    isSpeaking: effectiveSpeaking,
     hasVideo,
     hasAudio,
     senders: activeSenders,
@@ -145,9 +182,16 @@ export default function RoomPage() {
       const stream = event.streams?.[0] || new MediaStream([event.track]);
       const key = `${peerId}::${stream.id}`;
       addRemoteStream(key, stream);
-      event.track.addEventListener('ended', () => {
-        if (stream.getTracks().every((t) => t.readyState === 'ended')) removeRemoteStream(key);
-      });
+
+      // Clean up when track ends or is removed (screen share stop)
+      const checkRemove = () => {
+        if (stream.getTracks().every((t) => t.readyState === 'ended' || t.muted)) {
+          removeRemoteStream(key);
+        }
+      };
+      event.track.addEventListener('ended', checkRemove);
+      event.track.addEventListener('mute', () => setTimeout(checkRemove, 300));
+      stream.addEventListener('removetrack', checkRemove);
     };
 
     pc.onicecandidate = (event) => {
@@ -173,7 +217,10 @@ export default function RoomPage() {
     if (pc.signalingState !== 'stable') return;
     try {
       makingOffer.current.add(peerId);
-      const offer = await pc.createOffer();
+      const offer = await pc.createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: true,
+      });
       if (pc.signalingState !== 'stable') return;
       await pc.setLocalDescription(offer);
       sendOfferRef.current(peerId, pc.localDescription);
@@ -214,9 +261,15 @@ export default function RoomPage() {
   useEffect(() => {
     return onUserJoined((peerId) => {
       console.log(`[Room] Peer joined: ${peerId}`);
-      getOrCreatePC(peerId);
+      const pc = getOrCreatePC(peerId);
+      // Add camera tracks so they're ready for answering
+      if (localStreamRef.current) addTracksToPC(pc, localStreamRef.current);
+      // NOTE: Screen share track is NOT added here. It will be sent via
+      // a follow-up offer after the initial handshake completes. This is
+      // because the newcomer's offer only has transceivers for audio+video,
+      // and adding a second video track here creates an unmatched transceiver.
     });
-  }, [onUserJoined, getOrCreatePC]);
+  }, [onUserJoined, getOrCreatePC, addTracksToPC]);
 
   // ── When localStream arrives — add to all existing PCs + reoffer
   useEffect(() => {
@@ -276,6 +329,18 @@ export default function RoomPage() {
         await pc.setLocalDescription(answer);
         sendAnswerRef.current(from, pc.localDescription);
         
+        // After answering, send screen share via follow-up offer if active
+        if (screenStreamRef.current && !screenSenders.current.has(from)) {
+          const t = screenStreamRef.current.getVideoTracks()[0];
+          if (t) {
+            try {
+              screenSenders.current.set(from, pc.addTrack(t, screenStreamRef.current));
+              // Small delay to let the answer settle before re-offering
+              setTimeout(() => doOffer(from), 100);
+            } catch {}
+          }
+        }
+
         // Re-sync senders after answering
         setActiveSenders(Array.from(pcs.current.values()).flatMap(p => p.getSenders()));
       } catch (err) {
@@ -292,11 +357,23 @@ export default function RoomPage() {
       try {
         await pc.setRemoteDescription(new RTCSessionDescription(answer));
         await flushIceCandidates(from, pc);
+
+        // After initial handshake, send screen share if active but not yet added
+        if (screenStreamRef.current && !screenSenders.current.has(from)) {
+          const t = screenStreamRef.current.getVideoTracks()[0];
+          if (t) {
+            try {
+              screenSenders.current.set(from, pc.addTrack(t, screenStreamRef.current));
+              // Need a new offer to include the screen share track
+              doOffer(from);
+            } catch {}
+          }
+        }
       } catch (err) {
         console.error(`[RTC] Answer error from ${from}:`, err);
       }
     });
-  }, [onAnswer, flushIceCandidates]);
+  }, [onAnswer, flushIceCandidates]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Receive ICE candidate (queue if no remote description yet) ─
   useEffect(() => {
@@ -327,11 +404,35 @@ export default function RoomPage() {
   useEffect(() => () => { pcs.current.forEach((pc) => pc.close()); pcs.current.clear(); }, []);
 
   const handleLeave = useCallback(() => {
-    pcs.current.forEach((pc) => pc.close()); pcs.current.clear(); navigate('/');
-  }, [navigate]);
+    pcs.current.forEach((pc) => pc.close());
+    pcs.current.clear();
+
+    // Compute session summary
+    const duration = Date.now() - sessionStart;
+    const throttledTime = throttleEvents
+      .filter((e) => e.type === 'restore' && e.duration)
+      .reduce((sum, e) => sum + e.duration, 0);
+    const throttlePercent = duration > 0 ? Math.round((throttledTime / duration) * 100) : 0;
+
+    if (bytesSaved > 0) {
+      setSessionData({
+        duration,
+        throttledTime,
+        throttlePercent,
+        bytesSaved,
+        throttleCount: throttleEvents.filter((e) => e.type === 'throttle').length,
+      });
+      setShowSummary(true);
+    } else {
+      navigate('/');
+    }
+  }, [navigate, sessionStart, throttleEvents, bytesSaved]);
   const handleScreenToggle = useCallback(() => {
-    if (isScreenSharing) stopScreenShare(); else startScreenShare();
-  }, [isScreenSharing, startScreenShare, stopScreenShare]);
+    if (isScreenSharing) { stopScreenShare(); return; }
+    // Block if another peer is already sharing
+    if (peerScreenSharing) return;
+    startScreenShare();
+  }, [isScreenSharing, peerScreenSharing, startScreenShare, stopScreenShare]);
   const handleCopyLink = useCallback(() => {
     const link = `${window.location.origin}/room/${roomId}`;
     navigator.clipboard.writeText(link).then(() => {
@@ -356,25 +457,21 @@ export default function RoomPage() {
 
   return (
     <div className="flex h-screen flex-col bg-neuro-bg overflow-hidden">
-      {/* Header */}
-      <header className="glass flex items-center justify-between border-b border-neuro-border px-4 py-3 sm:px-6 flex-shrink-0">
-        <Link to="/" className="flex items-center gap-2 text-sm text-neuro-muted hover:text-neuro-text">
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" /></svg>
-          <span className="hidden sm:inline">Lobby</span>
+      {/* Header — minimal, just back button */}
+      <div className="flex items-center justify-between px-3 py-1.5 flex-shrink-0">
+        <Link to="/" className="text-neuro-muted hover:text-neuro-text text-xs flex items-center gap-1">
+          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" /></svg>
+          Lobby
         </Link>
-        <div className="text-center">
-          <span className="text-xs uppercase tracking-widest text-neuro-muted">Room</span>
-          <h1 className="text-sm font-bold text-neuro-text sm:text-base">{roomId}</h1>
-        </div>
         <div className="flex items-center gap-2">
-          <button onClick={handleCopyLink} className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium ring-1 ${linkCopied ? 'bg-neuro-success/20 text-neuro-success ring-neuro-success/30' : 'bg-neuro-surface text-neuro-muted ring-neuro-border hover:text-neuro-text'}`}>
-            {linkCopied ? 'Copied!' : 'Invite'}
+          <span className={`h-1.5 w-1.5 rounded-full ${isConnected ? 'bg-neuro-success' : 'bg-neuro-danger'}`} />
+          <span className="text-[10px] text-neuro-muted font-medium">{roomId}</span>
+          <span className="text-[10px] text-neuro-muted">• {peerCount}</span>
+          <button onClick={handleCopyLink} className={`text-[10px] px-1.5 py-0.5 rounded ring-1 ${linkCopied ? 'text-neuro-success ring-neuro-success/30' : 'text-neuro-muted ring-neuro-border hover:text-neuro-accent'}`}>
+            {linkCopied ? '✓' : 'Invite'}
           </button>
-          <span className={`inline-block h-2 w-2 rounded-full ${isConnected ? 'bg-neuro-success animate-pulse' : 'bg-neuro-danger'}`} />
-          <span className="text-xs text-neuro-muted">{isConnected ? 'Connected' : 'Offline'}</span>
-          <span className="ml-1 rounded-full bg-neuro-surface px-2 py-0.5 text-[10px] font-medium text-neuro-muted ring-1 ring-neuro-border">{peerCount} {peerCount === 1 ? 'peer' : 'peers'}</span>
         </div>
-      </header>
+      </div>
 
       {mediaWarning && (
         <div className="flex items-center justify-between gap-3 border-b border-neuro-border bg-neuro-surface/50 px-4 py-2.5 sm:px-6 flex-shrink-0">
@@ -385,32 +482,56 @@ export default function RoomPage() {
         </div>
       )}
 
+      {isBenchmarking && (
+        <div className="flex items-center gap-2 border-b border-neuro-border/50 bg-neuro-surface/50 px-4 py-1.5 flex-shrink-0">
+          <span className="h-2 w-2 rounded-full bg-neuro-accent animate-pulse" />
+          <span className="text-[11px] text-neuro-muted">Benchmarking device…</span>
+        </div>
+      )}
+
+      {benchmarkComplete && isLowEnd && (
+        <div className="flex items-center gap-2 border-b border-amber-500/20 bg-amber-500/5 px-4 py-1.5 flex-shrink-0">
+          <span className="text-[11px] text-amber-400">⚠ AI disabled — device too slow. Calls work normally.</span>
+        </div>
+      )}
+
       {/* Video grid */}
       <main className={`relative flex-1 overflow-hidden p-3 sm:p-6 transition-all duration-300 ${hudExpanded ? 'pr-[19rem]' : ''}`} style={{ minHeight: 0 }}>
         <TelemetryHUD history={history} aggregated={aggregated} cognitiveMode={currentMode} expanded={hudExpanded} setExpanded={setHudExpanded} />
-        <VideoGrid>
-          <VideoTile stream={localStream} peerId="local" isLocal isMuted={!isAudioEnabled} label={user?.username || 'You'} />
-          {screenStream && <VideoTile stream={screenStream} peerId="screen-local" isLocal isMuted label="Your Screen" />}
-          {peers.map((peerId) => {
+        {(isBenchmarkActive || benchmarkDone) && (
+          <BenchmarkHUD elapsedSec={benchElapsed} currentPhase={benchPhase} progress={benchProgress} isComplete={benchmarkDone} onExport={exportResults} />
+        )}
+        {(() => {
+          // Build flat tile list with stable IDs for pinning
+          const tiles = [];
+          tiles.push({ id: 'local', el: <VideoTile key="local" stream={localStream} peerId="local" isLocal isMuted={!isAudioEnabled} label={user?.username || 'You'} onPin={() => setPinnedTile(pinnedTile === 'local' ? null : 'local')} isPinned={pinnedTile === 'local'} /> });
+          if (screenStream) {
+            tiles.push({ id: 'screen-local', el: <VideoTile key="screen-local" stream={screenStream} peerId="screen-local" isLocal isScreen isMuted label="Your Screen" onPin={() => setPinnedTile(pinnedTile === 'screen-local' ? null : 'screen-local')} isPinned={pinnedTile === 'screen-local'} /> });
+          }
+          peers.forEach((peerId) => {
             const name = peerNames.get(peerId) || `Peer ${peerId.slice(-4)}`;
             const peerStreams = [...remoteStreams.entries()].filter(([k]) => k.startsWith(`${peerId}::`));
             if (peerStreams.length === 0) {
-              return <VideoTile key={peerId} stream={null} peerId={peerId} isLocal={false} isMuted label={name} />;
+              tiles.push({ id: peerId, el: <VideoTile key={peerId} stream={null} peerId={peerId} isLocal={false} isMuted label={name} onPin={() => setPinnedTile(pinnedTile === peerId ? null : peerId)} isPinned={pinnedTile === peerId} /> });
+            } else {
+              peerStreams.forEach(([key, stream]) => {
+                const isRemoteScreen = stream.getVideoTracks().length > 0 && stream.getAudioTracks().length === 0;
+                tiles.push({ id: key, el: <VideoTile key={key} stream={stream} peerId={key} isLocal={false} isScreen={isRemoteScreen} isMuted={false} label={isRemoteScreen ? `${name}'s Screen` : name} onPin={() => setPinnedTile(pinnedTile === key ? null : key)} isPinned={pinnedTile === key} /> });
+              });
             }
-            return peerStreams.map(([key, stream]) => {
-              const isScreen = stream.getVideoTracks().length > 0 && stream.getAudioTracks().length === 0;
-              return <VideoTile key={key} stream={stream} peerId={key} isLocal={false} isMuted={false} label={isScreen ? `${name}'s Screen` : name} />;
-            });
-          })}
-        </VideoGrid>
+          });
+          const pIdx = pinnedTile ? tiles.findIndex((t) => t.id === pinnedTile) : -1;
+          return <VideoGrid pinnedIndex={pIdx}>{tiles.map((t) => t.el)}</VideoGrid>;
+        })()}
       </main>
 
       {/* Controls */}
       <footer className="glass border-t border-neuro-border flex-shrink-0">
-        <div className="mx-auto flex max-w-lg items-center justify-center gap-3 px-4 py-3 sm:gap-4">
+        <div className="mx-auto flex max-w-2xl items-center justify-center gap-3 px-4 py-3 sm:gap-4">
+          <BandwidthSavedCounter bytesSaved={bytesSaved} isThrottled={isThrottled} />
           <CtrlBtn active={isAudioEnabled} onClick={toggleAudio} disabled={!hasAudio} danger><MicIcon on={isAudioEnabled} /></CtrlBtn>
           <CtrlBtn active={isVideoEnabled} onClick={toggleVideo} disabled={!hasVideo} danger><CamIcon on={isVideoEnabled} /></CtrlBtn>
-          <CtrlBtn active={isScreenSharing} onClick={handleScreenToggle} highlight><ScreenIcon /></CtrlBtn>
+          <CtrlBtn active={isScreenSharing} onClick={handleScreenToggle} disabled={peerScreenSharing && !isScreenSharing} highlight><ScreenIcon /></CtrlBtn>
           <CtrlBtn active={aiEnabled} onClick={() => setAiEnabled(!aiEnabled)} danger={!aiEnabled}>
              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
@@ -422,6 +543,9 @@ export default function RoomPage() {
           </button>
         </div>
       </footer>
+
+      {/* Session summary modal */}
+      <SessionSummary visible={showSummary} sessionData={sessionData} onClose={() => navigate('/')} />
     </div>
   );
 }

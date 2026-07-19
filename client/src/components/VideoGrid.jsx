@@ -1,122 +1,62 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React from 'react';
 
 /**
- * VideoGrid({ children })
+ * VideoGrid — Adaptive tile layout with pin support.
  *
- * Dynamically computes optimal tile layout (rows, columns, tile dimensions)
- * to maximize child tiles' sizes while preserving a 16:9 aspect ratio.
- * Tiles ALWAYS fit within the container — never overflow or cause scrolling.
+ * Props:
+ *   - children: VideoTile components (first child is pinned if pinnedIndex >= 0)
+ *   - pinnedIndex: number — index of the pinned child (-1 = none)
  */
-export default function VideoGrid({ children }) {
-  const containerRef = useRef(null);
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const observer = new ResizeObserver((entries) => {
-      if (!entries || entries.length === 0) return;
-      const { width, height } = entries[0].contentRect;
-      setDimensions({ width, height });
-    });
-
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, []);
-
-  const childrenArray = React.Children.toArray(children).filter(Boolean);
+export default function VideoGrid({ children, pinnedIndex = -1 }) {
+  const childrenArray = React.Children.toArray(children).flat().filter(Boolean);
   const count = childrenArray.length;
 
   if (count === 0) {
     return (
-      <div ref={containerRef} className="w-full h-full flex items-center justify-center">
+      <div className="w-full h-full flex items-center justify-center">
         <p className="text-neuro-muted text-sm">Waiting for participants…</p>
       </div>
     );
   }
 
-  const { width, height } = dimensions;
-  const GAP = 12;
-  const ASPECT = 16 / 9;
+  // ── Pinned layout: 50% left + grid right ───────────────────────
+  if (pinnedIndex >= 0 && pinnedIndex < count && count > 1) {
+    const pinned = childrenArray[pinnedIndex];
+    const others = childrenArray.filter((_, i) => i !== pinnedIndex);
+    const rightCols = others.length <= 2 ? 1 : 2;
 
-  let bestCols = 1;
-  let bestTileW = 0;
-  let bestTileH = 0;
-
-  if (width > 0 && height > 0) {
-    for (let cols = 1; cols <= count; cols++) {
-      const rows = Math.ceil(count / cols);
-
-      const availW = width - (cols - 1) * GAP;
-      const availH = height - (rows - 1) * GAP;
-
-      const maxW = availW / cols;
-      const maxH = availH / rows;
-
-      // Fit ASPECT rectangle into maxW × maxH
-      let w, h;
-      if (maxW / maxH > ASPECT) {
-        h = maxH;
-        w = h * ASPECT;
-      } else {
-        w = maxW;
-        h = w / ASPECT;
-      }
-
-      // Ensure we never exceed available space
-      w = Math.min(w, maxW);
-      h = Math.min(h, maxH);
-
-      if (w * h > bestTileW * bestTileH) {
-        bestTileW = w;
-        bestTileH = h;
-        bestCols = cols;
-      }
-    }
+    return (
+      <div className="w-full h-full flex gap-2 p-1">
+        <div className="w-1/2 h-full rounded-xl overflow-hidden bg-neuro-surface border-2 border-neuro-accent/40 flex-shrink-0">
+          {pinned}
+        </div>
+        <div
+          className="flex-1 min-w-0 grid gap-2"
+          style={{ gridTemplateColumns: `repeat(${rightCols}, 1fr)`, gridAutoRows: '1fr' }}
+        >
+          {others.map((child, i) => (
+            <div key={child.key || i} className="rounded-xl overflow-hidden bg-neuro-surface border border-neuro-border min-h-0">
+              {child}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
-  const isMeasured = width > 0 && height > 0;
+  // ── Normal layout ──────────────────────────────────────────────
+  const cols = count <= 1 ? 1 : count <= 4 ? 2 : 3;
 
   return (
-    <div
-      ref={containerRef}
-      className="w-full h-full overflow-hidden"
-      style={{ minHeight: 0 }}
-    >
+    <div className="w-full h-full p-1">
       <div
-        style={isMeasured ? {
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignContent: 'center',
-          justifyContent: 'center',
-          gap: `${GAP}px`,
-          width: '100%',
-          height: '100%',
-        } : {
-          display: 'grid',
-          gridTemplateColumns: count <= 1 ? '1fr' : 'repeat(2, 1fr)',
-          gap: `${GAP}px`,
-          width: '100%',
-          height: '100%',
-          placeItems: 'center',
-        }}
+        className="w-full h-full grid gap-2"
+        style={{ gridTemplateColumns: `repeat(${cols}, 1fr)`, gridAutoRows: '1fr' }}
       >
-        {childrenArray.map((child, index) => (
+        {childrenArray.map((child, i) => (
           <div
-            key={child.key || index}
-            style={isMeasured ? {
-              width: `${bestTileW}px`,
-              height: `${bestTileH}px`,
-              flexShrink: 0,
-              flexGrow: 0,
-              transition: 'width 0.3s ease, height 0.3s ease',
-            } : {
-              aspectRatio: '16 / 9',
-              width: '100%',
-              maxHeight: '300px',
-            }}
-            className="relative rounded-xl overflow-hidden shadow-lg bg-neuro-surface border border-neuro-border hover:border-neuro-accent/30 transition-colors duration-300"
+            key={child.key || i}
+            className="relative rounded-xl overflow-hidden bg-neuro-surface border border-neuro-border hover:border-neuro-accent/30 transition-colors min-h-0"
           >
             {child}
           </div>
