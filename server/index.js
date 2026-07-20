@@ -25,7 +25,7 @@ const MAX_PEERS_PER_ROOM = 4;
 // Parse comma-separated origins, trim whitespace
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173')
   .split(',')
-  .map((o) => o.trim())
+  .map((o) => o.trim().replace(/\/$/, ''))
   .filter(Boolean);
 
 // ── Express App ─────────────────────────────────────────────────
