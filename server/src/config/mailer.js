@@ -13,8 +13,9 @@ const transporter = process.env.SMTP_USER
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
       },
-      // Force IPv4 explicitly at the socket level to fix Render ENETUNREACH
-      family: 4,
+      // Force IPv4 explicitly by binding the local socket to the IPv4 zero address
+      // This guarantees Node.js cannot attempt an IPv6 connection (which causes ENETUNREACH on Render)
+      localAddress: '0.0.0.0',
     })
   : null;
 
