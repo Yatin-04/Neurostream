@@ -1,23 +1,22 @@
-import nodemailer from 'nodemailer';
-import dns from 'dns';
+import { google } from 'googleapis';
 
-// Force Node.js to use IPv4 first when resolving SMTP host to fix ENETUNREACH in Render
-dns.setDefaultResultOrder('ipv4first');
+const OAuth2 = google.auth.OAuth2;
 
-const transporter = process.env.SMTP_USER
-  ? nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: parseInt(process.env.SMTP_PORT, 10) || 465,
-      secure: true, // Gmail port 465 requires secure: true
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-      // Force IPv4 explicitly by binding the local socket to the IPv4 zero address
-      // This guarantees Node.js cannot attempt an IPv6 connection (which causes ENETUNREACH on Render)
-      localAddress: '0.0.0.0',
-    })
-  : null;
+let gmail = null;
+
+if (process.env.GMAIL_CLIENT_ID && process.env.GMAIL_CLIENT_SECRET && process.env.GMAIL_REFRESH_TOKEN) {
+  const oauth2Client = new OAuth2(
+    process.env.GMAIL_CLIENT_ID,
+    process.env.GMAIL_CLIENT_SECRET,
+    "https://developers.google.com/oauthplayground"
+  );
+
+  oauth2Client.setCredentials({
+    refresh_token: process.env.GMAIL_REFRESH_TOKEN
+  });
+
+  gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+}
 
 function buildOtpHtml(heading, code) {
   return `
@@ -34,16 +33,32 @@ function buildOtpHtml(heading, code) {
   `;
 }
 
-const FROM = process.env.SMTP_FROM || '"Baud" <noreply@baud.dev>';
+const FROM = process.env.SMTP_FROM || 'Baud <noreply@baud.dev>';
+
+function makeEmailRaw(to, from, subject, message) {
+  const str = [
+    "Content-Type: text/html; charset=\"UTF-8\"\n",
+    "MIME-Version: 1.0\n",
+    "Content-Transfer-Encoding: 7bit\n",
+    "to: ", to, "\n",
+    "from: ", from, "\n",
+    "subject: ", subject, "\n\n",
+    message
+  ].join('');
+
+  return Buffer.from(str).toString("base64").replace(/\+/g, '-').replace(/\//g, '_');
+}
 
 export async function sendOtpEmail(to, code) {
-  if (!transporter) return;
+  if (!gmail) {
+    console.warn('[Mailer] Missing Gmail OAuth credentials.');
+    return;
+  }
   try {
-    await transporter.sendMail({
-      from: FROM,
-      to,
-      subject: 'Baud — Your Verification Code',
-      html: buildOtpHtml('Your verification code is:', code),
+    const raw = makeEmailRaw(to, FROM, 'Baud — Your Verification Code', buildOtpHtml('Your verification code is:', code));
+    await gmail.users.messages.send({
+      userId: 'me',
+      requestBody: { raw }
     });
   } catch (err) {
     console.error('[Mailer] Send failed:', err.message);
@@ -51,13 +66,15 @@ export async function sendOtpEmail(to, code) {
 }
 
 export async function sendResetEmail(to, code) {
-  if (!transporter) return;
+  if (!gmail) {
+    console.warn('[Mailer] Missing Gmail OAuth credentials.');
+    return;
+  }
   try {
-    await transporter.sendMail({
-      from: FROM,
-      to,
-      subject: 'Baud — Password Reset Code',
-      html: buildOtpHtml('Your password reset code is:', code),
+    const raw = makeEmailRaw(to, FROM, 'Baud — Password Reset Code', buildOtpHtml('Your password reset code is:', code));
+    await gmail.users.messages.send({
+      userId: 'me',
+      requestBody: { raw }
     });
   } catch (err) {
     console.error('[Mailer] Send failed:', err.message);
