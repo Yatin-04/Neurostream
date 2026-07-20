@@ -1,6 +1,7 @@
 /* ───────────────────────────────────────────
    NeuroStream — Global Styles
    ─────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -46,12 +47,13 @@
 
 /* ── Component utilities ─────────────────── */
 @layer components {
-  /* Glass morphism card */
+  /* Ultra Glass morphism card */
   .glass {
-    background: rgba(18, 18, 26, 0.6);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(99, 102, 241, 0.08);
+    background: rgba(255, 255, 255, 0.02);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   }
 
   /* Smooth state-change transitions */
@@ -72,57 +74,60 @@
   }
 }
 
-/* ── Animated background gradient orbs ───── */
-@keyframes orb-drift-1 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33%      { transform: translate(30px, -50px) scale(1.1); }
-  66%      { transform: translate(-20px, 20px) scale(0.9); }
-}
-
-@keyframes orb-drift-2 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33%      { transform: translate(-40px, 30px) scale(0.95); }
-  66%      { transform: translate(50px, -20px) scale(1.05); }
-}
-
-@keyframes orb-drift-3 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50%      { transform: translate(20px, 40px) scale(1.1); }
-}
-
-.orb {
+/* ── Cognitive Resonance Spherical Waves ── */
+.wave-container {
   position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.3;
+  inset: 0;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 0;
   pointer-events: none;
-  will-change: transform;
 }
 
-.orb-1 {
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, #6366f1 0%, transparent 70%);
+.spherical-wave {
+  position: absolute;
+  border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+  animation: blob-spin 20s linear infinite;
+  mix-blend-mode: screen;
+  filter: blur(40px);
+  opacity: 0.6;
+  will-change: transform, border-radius;
+  transition: all 0.5s ease-in-out;
+}
+
+.wave-cyan {
+  width: 60vw;
+  height: 60vw;
+  max-width: 600px;
+  max-height: 600px;
+  background: radial-gradient(circle at center, #06b6d4 0%, transparent 60%);
   top: 10%;
-  left: 15%;
-  animation: orb-drift-1 12s ease-in-out infinite;
+  left: 20%;
+  animation-duration: 25s;
+  animation-direction: alternate;
 }
 
-.orb-2 {
-  width: 350px;
-  height: 350px;
-  background: radial-gradient(circle, #8b5cf6 0%, transparent 70%);
-  top: 50%;
-  right: 10%;
-  animation: orb-drift-2 15s ease-in-out infinite;
-}
-
-.orb-3 {
-  width: 300px;
-  height: 300px;
-  background: radial-gradient(circle, #22c55e 0%, transparent 70%);
+.wave-indigo {
+  width: 50vw;
+  height: 50vw;
+  max-width: 500px;
+  max-height: 500px;
+  background: radial-gradient(circle at center, #4f46e5 0%, transparent 60%);
   bottom: 10%;
-  left: 40%;
-  animation: orb-drift-3 18s ease-in-out infinite;
-  opacity: 0.15;
+  right: 15%;
+  animation-duration: 22s;
+  animation-direction: reverse;
+}
+
+.wave-magenta {
+  width: 55vw;
+  height: 55vw;
+  max-width: 550px;
+  max-height: 550px;
+  background: radial-gradient(circle at center, #d946ef 0%, transparent 60%);
+  top: 30%;
+  left: 30%;
+  animation-duration: 28s;
 }

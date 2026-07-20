@@ -45,10 +45,13 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden px-4">
-      <div className="orb orb-1" aria-hidden="true" />
-      <div className="orb orb-2" aria-hidden="true" />
+      <div className="wave-container" aria-hidden="true">
+        <div className="spherical-wave wave-cyan" />
+        <div className="spherical-wave wave-indigo" />
+        <div className="spherical-wave wave-magenta" />
+      </div>
 
-      <div className="glass glow-accent relative z-10 w-full max-w-md rounded-2xl p-8 sm:p-10">
+      <div className="glass glow-accent relative z-10 w-full max-w-md rounded-3xl p-8 sm:p-10">
         <div className="mb-8 text-center">
           <h1 className="text-glow text-2xl font-bold tracking-tight">Reset Password</h1>
           <p className="mt-2 text-sm text-neuro-muted">
