@@ -1,6 +1,18 @@
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+const smtpPort = parseInt(process.env.SMTP_PORT, 10) || 587;
+
+const transporter = process.env.SMTP_USER
+  ? nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: smtpPort,
+      secure: smtpPort === 465, // true for 465, false for 587
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    })
+  : null;
 
 function buildOtpHtml(heading, code) {
   return `
@@ -17,12 +29,12 @@ function buildOtpHtml(heading, code) {
   `;
 }
 
-const FROM = process.env.SMTP_FROM || 'Baud <onboarding@resend.dev>';
+const FROM = process.env.SMTP_FROM || '"Baud" <noreply@baud.dev>';
 
 export async function sendOtpEmail(to, code) {
-  if (!resend) return;
-  await resend.emails.send({
-    from: process.env.SMTP_FROM || 'onboarding@resend.dev',
+  if (!transporter) return;
+  await transporter.sendMail({
+    from: FROM,
     to,
     subject: 'Baud — Your Verification Code',
     html: buildOtpHtml('Your verification code is:', code),
@@ -30,9 +42,9 @@ export async function sendOtpEmail(to, code) {
 }
 
 export async function sendResetEmail(to, code) {
-  if (!resend) return;
-  await resend.emails.send({
-    from: process.env.SMTP_FROM || 'onboarding@resend.dev',
+  if (!transporter) return;
+  await transporter.sendMail({
+    from: FROM,
     to,
     subject: 'Baud — Password Reset Code',
     html: buildOtpHtml('Your password reset code is:', code),
