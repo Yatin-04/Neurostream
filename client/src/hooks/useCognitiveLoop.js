@@ -135,7 +135,9 @@ export default function useCognitiveLoop({
     const attentionLost = !isAttentive;
     const voiceLost = hasAudio ? !isSpeaking : true; // If no mic, voice is "lost" by default
     
-    const shouldThrottle = attentionLost && voiceLost;
+    // If the user is screen sharing, their camera is relegated to a tiny thumbnail for all peers.
+    // Therefore, we aggressively throttle their camera feed regardless of attention or speaking status.
+    const shouldThrottle = isScreenSharing || (attentionLost && voiceLost);
 
     if (shouldThrottle) {
       // Start timer if not already running and not already throttled
@@ -155,7 +157,7 @@ export default function useCognitiveLoop({
         restoreQuality();
       }
     }
-  }, [isAttentive, isSpeaking, hasVideo, hasAudio, isEnabled, isThrottled, throttleQuality, restoreQuality]);
+  }, [isAttentive, isSpeaking, hasVideo, hasAudio, isEnabled, isScreenSharing, isThrottled, throttleQuality, restoreQuality]);
 
   // Bandwidth accumulation loop
   useEffect(() => {
