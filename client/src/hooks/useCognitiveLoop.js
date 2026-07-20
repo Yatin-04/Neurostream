@@ -135,9 +135,9 @@ export default function useCognitiveLoop({
     const attentionLost = !isAttentive;
     const voiceLost = hasAudio ? !isSpeaking : true; // If no mic, voice is "lost" by default
     
-    // If the user is screen sharing, their camera is relegated to a tiny thumbnail for all peers.
-    // Therefore, we aggressively throttle their camera feed regardless of attention or speaking status.
-    const shouldThrottle = isScreenSharing || (attentionLost && voiceLost);
+    // As requested: whether screen sharing or not, the camera feed is evaluated exactly the same.
+    // The screen share track itself is naturally immune to throttling inside the actuator function below.
+    const shouldThrottle = attentionLost && voiceLost;
 
     if (shouldThrottle) {
       // Start timer if not already running and not already throttled
