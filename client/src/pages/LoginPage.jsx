@@ -42,7 +42,7 @@ export default function LoginPage() {
       <div className="glass glow-accent relative z-10 w-full max-w-md rounded-3xl p-8 sm:p-10">
         <div className="mb-8 text-center">
           <h1 className="text-glow text-3xl font-bold tracking-tight">
-            Neuro<span className="text-neuro-accent">Stream</span>
+            Ba<span className="text-neuro-accent">ud</span>
           </h1>
           <p className="mt-2 text-sm text-neuro-muted">Sign in to your account</p>
         </div>

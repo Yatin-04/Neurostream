@@ -97,8 +97,8 @@ export default function LandingPage() {
     const link = `${window.location.origin}/room/${id}`;
     if (navigator.share) {
       navigator.share({
-        title: 'Join my NeuroStream meeting',
-        text: 'Click this link to join my video call on NeuroStream:',
+        title: 'Join my Baud meeting',
+        text: 'Click this link to join my video call on Baud:',
         url: link,
       }).catch(() => {});
     } else {
@@ -154,7 +154,7 @@ export default function LandingPage() {
           </div>
 
           <h1 className="text-glow text-3xl font-bold tracking-tight sm:text-4xl">
-            Neuro<span className="text-neuro-accent">Stream</span>
+            Ba<span className="text-neuro-accent">ud</span>
           </h1>
 
           <p className="mt-3 text-sm text-neuro-muted sm:text-base">

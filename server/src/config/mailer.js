@@ -1,26 +1,11 @@
-import nodemailer from 'nodemailer';
-import dns from 'dns';
+import { Resend } from 'resend';
 
-// Force Node.js to use IPv4 first when resolving SMTP host to fix ENETUNREACH in Render
-dns.setDefaultResultOrder('ipv4first');
-const transporter = process.env.SMTP_USER
-  ? nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: parseInt(process.env.SMTP_PORT, 10) || 587,
-      secure: parseInt(process.env.SMTP_PORT, 10) === 465,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-      // Force IPv4 explicitly at the socket level
-      family: 4,
-    })
-  : null;
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 function buildOtpHtml(heading, code) {
   return `
     <div style="font-family: sans-serif; max-width: 400px; margin: auto; padding: 24px;">
-      <h2 style="color: #6366f1;">NeuroStream</h2>
+      <h2 style="color: #6366f1;">Baud</h2>
       <p>${heading}</p>
       <div style="font-size: 32px; font-weight: bold; letter-spacing: 6px; padding: 16px; background: #f3f4f6; border-radius: 8px; text-align: center;">
         ${code}
@@ -32,24 +17,24 @@ function buildOtpHtml(heading, code) {
   `;
 }
 
-const FROM = process.env.SMTP_FROM || '"NeuroStream" <noreply@neurostream.dev>';
+const FROM = process.env.SMTP_FROM || 'Baud <onboarding@resend.dev>';
 
 export async function sendOtpEmail(to, code) {
-  if (!transporter) return;
-  await transporter.sendMail({
-    from: FROM,
+  if (!resend) return;
+  await resend.emails.send({
+    from: process.env.SMTP_FROM || 'onboarding@resend.dev',
     to,
-    subject: 'NeuroStream — Your Verification Code',
+    subject: 'Baud — Your Verification Code',
     html: buildOtpHtml('Your verification code is:', code),
   });
 }
 
 export async function sendResetEmail(to, code) {
-  if (!transporter) return;
-  await transporter.sendMail({
-    from: FROM,
+  if (!resend) return;
+  await resend.emails.send({
+    from: process.env.SMTP_FROM || 'onboarding@resend.dev',
     to,
-    subject: 'NeuroStream — Password Reset Code',
+    subject: 'Baud — Password Reset Code',
     html: buildOtpHtml('Your password reset code is:', code),
   });
 }

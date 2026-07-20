@@ -51,7 +51,7 @@ export function SessionSummary({ visible, onClose, sessionData }) {
 
   const handleCopy = useCallback(() => {
     const text = [
-      `NeuroStream Session Summary`,
+      `Baud Session Summary`,
       `──────────────────────────`,
       `Duration: ${formatDuration(sessionData.duration)}`,
       `Time Throttled: ${formatDuration(sessionData.throttledTime)} (${sessionData.throttlePercent}%)`,
