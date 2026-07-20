@@ -28,34 +28,39 @@ export async function register(req, res) {
     return res.status(400).json({ error: 'Username, email, and password are required' });
   }
 
-  const existing = await pool.query(
-    'SELECT id FROM users WHERE email = $1 OR username = $2',
-    [email, username],
-  );
-  if (existing.rows.length) {
-    return res.status(409).json({ error: 'Email or username already taken' });
-  }
-
-  const hashedPassword = await bcrypt.hash(password, 10);
-  const otp = generateOtp();
-  const otpExpires = new Date(Date.now() + OTP_EXPIRY_MIN * 60 * 1000);
-
-  await pool.query(
-    `INSERT INTO users (username, email, password, otp_code, otp_expires_at)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [username, email, hashedPassword, otp, otpExpires],
-  );
-
   try {
-    await sendOtpEmail(email, otp);
+    const existing = await pool.query(
+      'SELECT id FROM users WHERE email = $1 OR username = $2',
+      [email, username],
+    );
+    if (existing.rows.length) {
+      return res.status(409).json({ error: 'Email or username already taken' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const otp = generateOtp();
+    const otpExpires = new Date(Date.now() + OTP_EXPIRY_MIN * 60 * 1000);
+
+    await pool.query(
+      `INSERT INTO users (username, email, password, otp_code, otp_expires_at)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [username, email, hashedPassword, otp, otpExpires],
+    );
+
+    try {
+      await sendOtpEmail(email, otp);
+    } catch (err) {
+      console.warn('[Auth] Email send failed:', err.message);
+    }
+
+    const response = { message: 'Registration successful. Check your email for the verification code.', email };
+    if (process.env.NODE_ENV !== 'production') response.dev_otp = otp;
+
+    res.status(201).json(response);
   } catch (err) {
-    console.warn('[Auth] Email send failed:', err.message);
+    console.error('[Auth] Registration error:', err);
+    res.status(500).json({ error: 'Internal server error during registration' });
   }
-
-  const response = { message: 'Registration successful. Check your email for the verification code.', email };
-  if (process.env.NODE_ENV !== 'production') response.dev_otp = otp;
-
-  res.status(201).json(response);
 }
 
 // ── Verify Email ─────────────────────────────────────────────────────
@@ -88,7 +93,7 @@ export async function verifyEmail(req, res) {
   res.cookie('access_token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 
@@ -125,7 +130,7 @@ export async function login(req, res) {
   res.cookie('access_token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 
