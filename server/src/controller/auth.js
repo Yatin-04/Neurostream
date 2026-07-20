@@ -30,11 +30,33 @@ export async function register(req, res) {
 
   try {
     const existing = await pool.query(
-      'SELECT id FROM users WHERE email = $1 OR username = $2',
+      'SELECT id, is_verified FROM users WHERE email = $1 OR username = $2',
       [email, username],
     );
     if (existing.rows.length) {
-      return res.status(409).json({ error: 'Email or username already taken' });
+      const user = existing.rows[0];
+      if (user.is_verified) {
+        return res.status(409).json({ error: 'Email or username already taken' });
+      } else {
+        // User exists but is not verified. Treat as a "resend OTP" to avoid deadlock.
+        const otp = generateOtp();
+        const otpExpires = new Date(Date.now() + OTP_EXPIRY_MIN * 60 * 1000);
+        
+        await pool.query(
+          'UPDATE users SET otp_code = $1, otp_expires_at = $2 WHERE id = $3',
+          [otp, otpExpires, user.id]
+        );
+        
+        try {
+          await sendOtpEmail(email, otp);
+        } catch (err) {
+          console.warn('[Auth] Email send failed:', err.message);
+        }
+        
+        const response = { message: 'Account exists but unverified. A new verification code has been sent.', email };
+        if (process.env.NODE_ENV !== 'production') response.dev_otp = otp;
+        return res.status(200).json(response);
+      }
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -122,7 +144,7 @@ export async function login(req, res) {
   }
 
   if (!user.is_verified) {
-    return res.status(403).json({ error: 'Please verify your email first' });
+    return res.status(403).json({ error: 'Please verify your email first', email: user.email });
   }
 
   const token = signToken(user);
@@ -247,3 +269,41 @@ export async function checkUsername(req, res) {
     return res.status(500).json({ error: 'Database query error' });
   }
 }
+
+// ── Resend OTP ───────────────────────────────────────────────────────
+
+export async function resendOtp(req, res) {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email is required' });
+
+  try {
+    const result = await pool.query('SELECT id, is_verified FROM users WHERE email = $1', [email]);
+    const user = result.rows[0];
+
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (user.is_verified) return res.status(400).json({ error: 'Account is already verified' });
+
+    const otp = generateOtp();
+    const otpExpires = new Date(Date.now() + OTP_EXPIRY_MIN * 60 * 1000);
+
+    await pool.query(
+      'UPDATE users SET otp_code = $1, otp_expires_at = $2 WHERE id = $3',
+      [otp, otpExpires, user.id]
+    );
+
+    try {
+      await sendOtpEmail(email, otp);
+    } catch (err) {
+      console.warn('[Auth] Resend OTP email failed:', err.message);
+    }
+
+    const response = { message: 'Verification code resent successfully' };
+    if (process.env.NODE_ENV !== 'production') response.dev_otp = otp;
+    
+    res.json(response);
+  } catch (err) {
+    console.error('[Auth] Resend OTP error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+

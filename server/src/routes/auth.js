@@ -9,6 +9,7 @@ import {
   resetPassword,
   logout,
   checkUsername,
+  resendOtp,
 } from '../controller/auth.js';
 
 const router = Router();
@@ -19,6 +20,7 @@ router.post('/login', login);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
 router.post('/logout', logout);
+router.post('/resend-otp', resendOtp);
 router.get('/me', authenticate, getMe);
 router.get('/check-username', checkUsername);
 export default router;

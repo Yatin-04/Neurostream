@@ -1,5 +1,8 @@
 import nodemailer from 'nodemailer';
+import dns from 'dns';
 
+// Force Node.js to use IPv4 first when resolving SMTP host to fix ENETUNREACH in Render
+dns.setDefaultResultOrder('ipv4first');
 const transporter = process.env.SMTP_USER
   ? nodemailer.createTransport({
       host: process.env.SMTP_HOST || 'smtp.mailtrap.io',

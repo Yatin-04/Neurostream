@@ -21,7 +21,11 @@ export default function LoginPage() {
       login(data.access_token, data.user);
       navigate('/');
     } catch (err) {
-      setError(err.response?.data?.error || 'Login failed');
+      if (err.response?.status === 403 && err.response?.data?.email) {
+        navigate('/verify-email', { state: { email: err.response.data.email } });
+      } else {
+        setError(err.response?.data?.error || 'Login failed');
+      }
     } finally {
       setLoading(false);
     }
