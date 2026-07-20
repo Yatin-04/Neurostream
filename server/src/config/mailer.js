@@ -1,16 +1,16 @@
 import nodemailer from 'nodemailer';
 
-const smtpPort = parseInt(process.env.SMTP_PORT, 10) || 587;
-
 const transporter = process.env.SMTP_USER
   ? nodemailer.createTransport({
       host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: smtpPort,
-      secure: smtpPort === 465, // true for 465, false for 587
+      port: parseInt(process.env.SMTP_PORT, 10) || 465,
+      secure: true, // Gmail port 465 requires secure: true
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
       },
+      // Force IPv4 explicitly at the socket level to fix Render ENETUNREACH
+      family: 4,
     })
   : null;
 
@@ -33,20 +33,29 @@ const FROM = process.env.SMTP_FROM || '"Baud" <noreply@baud.dev>';
 
 export async function sendOtpEmail(to, code) {
   if (!transporter) return;
-  await transporter.sendMail({
-    from: FROM,
-    to,
-    subject: 'Baud — Your Verification Code',
-    html: buildOtpHtml('Your verification code is:', code),
-  });
+  try {
+    await transporter.sendMail({
+      from: FROM,
+      to,
+      subject: 'Baud — Your Verification Code',
+      html: buildOtpHtml('Your verification code is:', code),
+    });
+  } catch (err) {
+    console.error('[Mailer] Send failed:', err.message);
+  }
 }
 
 export async function sendResetEmail(to, code) {
   if (!transporter) return;
-  await transporter.sendMail({
-    from: FROM,
-    to,
-    subject: 'Baud — Password Reset Code',
-    html: buildOtpHtml('Your password reset code is:', code),
-  });
+  try {
+    await transporter.sendMail({
+      from: FROM,
+      to,
+      subject: 'Baud — Password Reset Code',
+      html: buildOtpHtml('Your password reset code is:', code),
+    });
+    if (error) console.error('[Mailer] Resend error:', error);
+  } catch (err) {
+    console.error('[Mailer] Send failed:', err.message);
+  }
 }
