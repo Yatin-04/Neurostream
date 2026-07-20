@@ -1,4 +1,8 @@
 import nodemailer from 'nodemailer';
+import dns from 'dns';
+
+// Force Node.js to use IPv4 first when resolving SMTP host to fix ENETUNREACH in Render
+dns.setDefaultResultOrder('ipv4first');
 
 const transporter = process.env.SMTP_USER
   ? nodemailer.createTransport({
@@ -54,7 +58,6 @@ export async function sendResetEmail(to, code) {
       subject: 'Baud — Password Reset Code',
       html: buildOtpHtml('Your password reset code is:', code),
     });
-    if (error) console.error('[Mailer] Resend error:', error);
   } catch (err) {
     console.error('[Mailer] Send failed:', err.message);
   }
