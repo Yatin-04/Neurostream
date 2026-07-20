@@ -5,12 +5,15 @@ import dns from 'dns';
 dns.setDefaultResultOrder('ipv4first');
 const transporter = process.env.SMTP_USER
   ? nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.mailtrap.io',
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
       port: parseInt(process.env.SMTP_PORT, 10) || 587,
+      secure: parseInt(process.env.SMTP_PORT, 10) === 465,
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
       },
+      // Force IPv4 explicitly at the socket level
+      family: 4,
     })
   : null;
 
