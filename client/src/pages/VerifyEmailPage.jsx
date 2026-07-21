@@ -59,9 +59,9 @@ export default function VerifyEmailPage() {
     setLoading(true);
 
     try {
-      const { user, token } = await api.post('/auth/verify-email', { email, code });
-      login(user, token);
-      navigate('/app', { replace: true });
+      const { data } = await api.post('/auth/verify-email', { email, code });
+      login(data.access_token, data.user);
+      navigate('/', { replace: true });
     } catch (err) {
       setError(err.response?.data?.error || 'Verification failed. Invalid or expired code.');
     } finally {
