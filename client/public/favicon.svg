@@ -1,0 +1,15 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Deep warm dark background for contrast and app-icon feel -->
+  <rect width="120" height="120" rx="32" fill="#111113"/>
+  
+  <!-- The Triad: Symbolic, Human (abstract figure), Elemental (stones/suns), Discrete (separate) -->
+  
+  <!-- Top / "Head" / Sun -->
+  <circle cx="60" cy="42" r="22" fill="#F4A261"/>
+  
+  <!-- Left / "Foundation" / Earth -->
+  <circle cx="38" cy="80" r="16" fill="#E87A5D"/>
+  
+  <!-- Right / "Foundation" / Fire -->
+  <circle cx="82" cy="80" r="16" fill="#E76F51"/>
+</svg>
