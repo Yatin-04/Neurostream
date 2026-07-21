@@ -124,7 +124,7 @@ export default function RoomPage() {
     hasVideo: isVideoEnabled,
     hasAudio: isAudioEnabled,
     senders: activeSenders,
-    isEnabled: aiEnabled,
+    isEnabled: aiEnabled && isFaceModelLoaded, // Only enable after ML models are ready
     screenTrackId,
   });
 
@@ -214,10 +214,18 @@ export default function RoomPage() {
     return pc;
   }, [createPC]);
 
-  // ── Send offer (with state guard) ─────────────────────────────
+  // ── Send offer (with state guard + retry) ───────────────────────
+  const doOfferRef = useRef(null);
   const doOffer = useCallback(async (peerId) => {
-    const pc = getOrCreatePC(peerId);
-    if (pc.signalingState !== 'stable') return;
+    const pc = pcs.current.get(peerId) || getOrCreatePC(peerId);
+    if (pc.signalingState !== 'stable') {
+      setTimeout(() => {
+        if (pcs.current.has(peerId) && pcs.current.get(peerId).signalingState === 'stable') {
+          doOfferRef.current?.(peerId);
+        }
+      }, 500);
+      return;
+    }
     try {
       makingOffer.current.add(peerId);
       const offer = await pc.createOffer({
@@ -233,6 +241,7 @@ export default function RoomPage() {
       makingOffer.current.delete(peerId);
     }
   }, [getOrCreatePC]);
+  doOfferRef.current = doOffer;
 
   // ── Setup a peer: add tracks + send offer ──────────────────────
   const setupPeer = useCallback((peerId) => {
