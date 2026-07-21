@@ -99,9 +99,9 @@ app.get('/api/turn-credentials', (_req, res) => {
     { urls: 'stun:stun.l.google.com:19302' },
   ];
 
-  const turnUrl = process.env.METERED_TURN_URL;
-  const turnUsername = process.env.METERED_TURN_USERNAME;
-  const turnCredential = process.env.METERED_TURN_CREDENTIAL;
+  const turnUrl = process.env.METERED_TURN_URL || 'neurostream.metered.live';
+  const turnUsername = process.env.METERED_TURN_USERNAME || '9c0c7e3e24e70c41faf4dd95';
+  const turnCredential = process.env.METERED_TURN_CREDENTIAL || 'kzWdoHdimwNjV8A1';
 
   // Append TURN servers only when credentials are configured
   if (turnUrl && turnUsername && turnCredential) {
