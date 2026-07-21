@@ -2,12 +2,14 @@ import { useState, useCallback, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
+import AuthShell from '../components/AuthShell';
+import AuthField from '../components/AuthField';
 
 export default function VerifyEmailPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { login } = useAuth();
-
+  
   const [email, setEmail] = useState(location.state?.email || '');
   const [emailSubmitted, setEmailSubmitted] = useState(!!location.state?.email);
   const [code, setCode] = useState('');
@@ -18,10 +20,11 @@ export default function VerifyEmailPage() {
   const [cooldown, setCooldown] = useState(0);
 
   useEffect(() => {
+    let timer;
     if (cooldown > 0) {
-      const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
-      return () => clearTimeout(timer);
+      timer = setInterval(() => setCooldown((c) => c - 1), 1000);
     }
+    return () => clearInterval(timer);
   }, [cooldown]);
 
   const handleEmailSubmit = (e) => {
@@ -33,19 +36,21 @@ export default function VerifyEmailPage() {
   };
 
   const handleResend = useCallback(async () => {
+    if (cooldown > 0 || resendLoading) return;
     setError('');
     setSuccess('');
     setResendLoading(true);
+
     try {
-      await api.post('/auth/resend-otp', { email });
-      setSuccess('A new verification code has been sent!');
+      await api.post('/api/auth/resend-verification', { email });
+      setSuccess('Verification code resent. Check your inbox.');
       setCooldown(60);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to resend code');
     } finally {
       setResendLoading(false);
     }
-  }, [email]);
+  }, [email, cooldown, resendLoading]);
 
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
@@ -54,11 +59,11 @@ export default function VerifyEmailPage() {
     setLoading(true);
 
     try {
-      const { data } = await api.post('/auth/verify-email', { email, code });
-      login(data.access_token, data.user);
-      navigate('/');
+      const { user, token } = await api.post('/api/auth/verify-email', { email, code });
+      login(user, token);
+      navigate('/app', { replace: true });
     } catch (err) {
-      setError(err.response?.data?.error || 'Verification failed');
+      setError(err.response?.data?.error || 'Verification failed. Invalid or expired code.');
     } finally {
       setLoading(false);
     }
@@ -66,93 +71,65 @@ export default function VerifyEmailPage() {
 
   if (!emailSubmitted) {
     return (
-      <div className="relative min-h-screen flex items-center justify-center overflow-hidden px-4">
-      <div className="wave-container" aria-hidden="true">
-        <div className="spherical-wave wave-cyan" />
-        <div className="spherical-wave wave-indigo" />
-        <div className="spherical-wave wave-magenta" />
-      </div>
-
-      <div className="glass glow-accent relative z-10 w-full max-w-md rounded-3xl p-8 sm:p-10">
-          <div className="mb-8 text-center">
-            <h1 className="text-glow text-2xl font-bold tracking-tight">Verify Your Email</h1>
-            <p className="mt-2 text-sm text-neuro-muted">
-              Enter your email address to continue verification.
-            </p>
-          </div>
-          <form onSubmit={handleEmailSubmit} className="space-y-4">
-            <input
-              type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email" required autoComplete="email"
-              className="w-full rounded-xl border border-neuro-border bg-neuro-bg/60 px-5 py-3.5 text-base text-neuro-text placeholder-neuro-muted outline-none transition-smooth focus:border-neuro-accent/50 focus:ring-2 focus:ring-neuro-accent/20"
-            />
-            <button type="submit"
-              className="w-full rounded-xl bg-neuro-accent px-5 py-3.5 text-base font-semibold text-white transition-smooth hover:bg-neuro-accent/90 hover:shadow-lg hover:shadow-neuro-accent/20 active:scale-[0.98]">
-              Continue
-            </button>
-          </form>
-          <button onClick={() => navigate('/register')} className="mt-4 w-full text-sm text-neuro-muted hover:text-neuro-accent">
+      <AuthShell
+        title="Verify your email"
+        subtitle="Enter your email address to continue verification."
+        footer={
+          <button onClick={() => navigate('/register')} className="transition-smooth hover:text-neuro-accent">
             Need an account? Register
           </button>
-        </div>
-      </div>
+        }
+      >
+        <form onSubmit={handleEmailSubmit} className="space-y-4">
+          <AuthField
+            id="email" label="Email" type="email"
+            value={email} onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@domain.com" required autoComplete="email"
+          />
+          <button type="submit" className="btn-resonance">
+            Continue
+          </button>
+        </form>
+      </AuthShell>
     );
   }
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden px-4">
-      <div className="wave-container" aria-hidden="true">
-        <div className="spherical-wave wave-cyan" />
-        <div className="spherical-wave wave-indigo" />
-        <div className="spherical-wave wave-magenta" />
-      </div>
-
-      <div className="glass glow-accent relative z-10 w-full max-w-md rounded-3xl p-8 sm:p-10">
-        <div className="mb-8 text-center">
-          <h1 className="text-glow text-2xl font-bold tracking-tight">Verify Your Email</h1>
-          <p className="mt-2 text-sm text-neuro-muted">
-            We sent a 6-digit code to <span className="text-neuro-text font-medium">{email}</span>
-            <button onClick={() => setEmailSubmitted(false)} className="ml-2 text-xs text-neuro-accent hover:underline">
-              (change)
-            </button>
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="rounded-lg bg-neuro-danger/10 px-4 py-2.5 text-sm text-neuro-danger ring-1 ring-neuro-danger/20">
-              {error}
-            </div>
-          )}
-          {success && (
-            <div className="rounded-lg bg-neuro-success/10 px-4 py-2.5 text-sm text-neuro-success ring-1 ring-neuro-success/20">
-              {success}
-            </div>
-          )}
-
-          <input
-            type="text" value={code} onChange={(e) => setCode(e.target.value)}
-            placeholder="Enter 6-digit code" required maxLength={6} autoComplete="one-time-code"
-            className="w-full rounded-xl border border-neuro-border bg-neuro-bg/60 px-5 py-3.5 text-center text-2xl tracking-[0.5em] text-neuro-text placeholder-neuro-muted outline-none transition-smooth focus:border-neuro-accent/50 focus:ring-2 focus:ring-neuro-accent/20"
-          />
-
-          <button type="submit" disabled={loading || code.length < 6}
-            className="w-full rounded-xl bg-neuro-accent px-5 py-3.5 text-base font-semibold text-white transition-smooth hover:bg-neuro-accent/90 hover:shadow-lg hover:shadow-neuro-accent/20 active:scale-[0.98] disabled:opacity-40">
-            {loading ? 'Verifying…' : 'Verify'}
+    <AuthShell
+      title="Verify your email"
+      subtitle={
+        <>
+          We sent a 6-digit code to <span className="font-medium text-neuro-text">{email}</span>
+          <button onClick={() => setEmailSubmitted(false)} className="ml-2 text-xs text-neuro-accent hover:underline">
+            (change)
           </button>
-        </form>
+        </>
+      }
+      footer={
+        <button
+          type="button"
+          onClick={handleResend}
+          disabled={resendLoading || cooldown > 0}
+          className="transition-smooth hover:text-neuro-accent disabled:opacity-50 disabled:hover:text-neuro-muted"
+        >
+          {resendLoading ? 'Sending…' : cooldown > 0 ? `Resend code in ${cooldown}s` : "Didn't receive a code? Resend"}
+        </button>
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && <div className="auth-alert error mb-4">{error}</div>}
+        {success && <div className="auth-alert success mb-4">{success}</div>}
 
-        <div className="mt-6 text-center">
-          <button 
-            type="button" 
-            onClick={handleResend}
-            disabled={resendLoading || cooldown > 0}
-            className="text-sm text-neuro-muted transition-smooth hover:text-neuro-accent disabled:opacity-50 disabled:hover:text-neuro-muted"
-          >
-            {resendLoading ? 'Sending...' : cooldown > 0 ? `Resend code in ${cooldown}s` : "Didn't receive a code? Resend"}
-          </button>
-        </div>
-      </div>
-    </div>
+        <AuthField
+          id="code" label="6-digit code" type="text" code
+          value={code} onChange={(e) => setCode(e.target.value)}
+          placeholder="000000" required maxLength={6} autoComplete="one-time-code"
+        />
+
+        <button type="submit" disabled={loading || code.length < 6} className="btn-resonance">
+          {loading ? 'Verifying…' : 'Verify'}
+        </button>
+      </form>
+    </AuthShell>
   );
 }

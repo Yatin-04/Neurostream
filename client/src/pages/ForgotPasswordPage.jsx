@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
+import AuthShell from '../components/AuthShell';
+import AuthField from '../components/AuthField';
 
 export default function ForgotPasswordPage() {
   const navigate = useNavigate();
@@ -18,11 +20,10 @@ export default function ForgotPasswordPage() {
     setLoading(true);
 
     try {
-      await api.post('/auth/forgot-password', { email });
-      setMessage('Check your email for the reset code.');
+      await api.post('/api/auth/forgot-password', { email });
       setStep('reset');
     } catch (err) {
-      setError(err.response?.data?.error || 'Request failed');
+      setError(err.response?.data?.error || 'Failed to send reset code');
     } finally {
       setLoading(false);
     }
@@ -31,82 +32,61 @@ export default function ForgotPasswordPage() {
   const handleReset = useCallback(async (e) => {
     e.preventDefault();
     setError('');
+    setMessage('');
     setLoading(true);
 
     try {
-      await api.post('/auth/reset-password', { email, code, newPassword });
-      navigate('/login', { state: { message: 'Password reset successful. Please sign in.' } });
+      await api.post('/api/auth/reset-password', { email, code, newPassword });
+      setMessage('Password reset successful. Redirecting to login...');
+      setTimeout(() => navigate('/login'), 2000);
     } catch (err) {
-      setError(err.response?.data?.error || 'Reset failed');
+      setError(err.response?.data?.error || 'Failed to reset password');
     } finally {
       setLoading(false);
     }
   }, [email, code, newPassword, navigate]);
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden px-4">
-      <div className="wave-container" aria-hidden="true">
-        <div className="spherical-wave wave-cyan" />
-        <div className="spherical-wave wave-indigo" />
-        <div className="spherical-wave wave-magenta" />
-      </div>
+    <AuthShell
+      title="Reset password"
+      subtitle={step === 'request' ? 'Enter your email to receive a reset code' : 'Enter the code and your new password'}
+      footer={
+        <Link to="/login" className="transition-smooth hover:text-neuro-accent">
+          ← Back to sign in
+        </Link>
+      }
+    >
+      {error && <div className="auth-alert error mb-4">{error}</div>}
+      {message && step === 'reset' && <div className="auth-alert success mb-4">{message}</div>}
 
-      <div className="glass glow-accent relative z-10 w-full max-w-md rounded-3xl p-8 sm:p-10">
-        <div className="mb-8 text-center">
-          <h1 className="text-glow text-2xl font-bold tracking-tight">Reset Password</h1>
-          <p className="mt-2 text-sm text-neuro-muted">
-            {step === 'request' ? 'Enter your email to receive a reset code' : 'Enter the code and your new password'}
-          </p>
-        </div>
-
-        {error && (
-          <div className="mb-4 rounded-lg bg-neuro-danger/10 px-4 py-2.5 text-sm text-neuro-danger ring-1 ring-neuro-danger/20">
-            {error}
-          </div>
-        )}
-        {message && step === 'reset' && (
-          <div className="mb-4 rounded-lg bg-neuro-success/10 px-4 py-2.5 text-sm text-neuro-success ring-1 ring-neuro-success/20">
-            {message}
-          </div>
-        )}
-
-        {step === 'request' ? (
-          <form onSubmit={handleRequest} className="space-y-4">
-            <input
-              type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email" required autoComplete="email"
-              className="w-full rounded-xl border border-neuro-border bg-neuro-bg/60 px-5 py-3.5 text-base text-neuro-text placeholder-neuro-muted outline-none transition-smooth focus:border-neuro-accent/50 focus:ring-2 focus:ring-neuro-accent/20"
-            />
-            <button type="submit" disabled={loading}
-              className="w-full rounded-xl bg-neuro-accent px-5 py-3.5 text-base font-semibold text-white transition-smooth hover:bg-neuro-accent/90 active:scale-[0.98] disabled:opacity-40">
-              {loading ? 'Sending…' : 'Send Reset Code'}
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={handleReset} className="space-y-4">
-            <input
-              type="text" value={code} onChange={(e) => setCode(e.target.value)}
-              placeholder="6-digit code" required maxLength={6} autoComplete="one-time-code"
-              className="w-full rounded-xl border border-neuro-border bg-neuro-bg/60 px-5 py-3.5 text-center text-2xl tracking-[0.5em] text-neuro-text placeholder-neuro-muted outline-none transition-smooth focus:border-neuro-accent/50 focus:ring-2 focus:ring-neuro-accent/20"
-            />
-            <input
-              type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="New password (min 6 chars)" required minLength={6} autoComplete="new-password"
-              className="w-full rounded-xl border border-neuro-border bg-neuro-bg/60 px-5 py-3.5 text-base text-neuro-text placeholder-neuro-muted outline-none transition-smooth focus:border-neuro-accent/50 focus:ring-2 focus:ring-neuro-accent/20"
-            />
-            <button type="submit" disabled={loading || code.length < 6}
-              className="w-full rounded-xl bg-neuro-accent px-5 py-3.5 text-base font-semibold text-white transition-smooth hover:bg-neuro-accent/90 active:scale-[0.98] disabled:opacity-40">
-              {loading ? 'Resetting…' : 'Reset Password'}
-            </button>
-          </form>
-        )}
-
-        <p className="mt-6 text-center text-sm text-neuro-muted">
-          <Link to="/login" className="text-neuro-accent transition-smooth hover:underline">
-            ← Back to Sign In
-          </Link>
-        </p>
-      </div>
-    </div>
+      {step === 'request' ? (
+        <form onSubmit={handleRequest} className="space-y-4">
+          <AuthField
+            id="email" label="Email" type="email"
+            value={email} onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@domain.com" required autoComplete="email"
+          />
+          <button type="submit" disabled={loading} className="btn-resonance">
+            {loading ? 'Sending…' : 'Send Reset Code'}
+          </button>
+        </form>
+      ) : (
+        <form onSubmit={handleReset} className="space-y-4">
+          <AuthField
+            id="code" label="6-digit code" type="text" code
+            value={code} onChange={(e) => setCode(e.target.value)}
+            placeholder="000000" required maxLength={6} autoComplete="one-time-code"
+          />
+          <AuthField
+            id="newPassword" label="New password (min 6 chars)" type="password"
+            value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
+            placeholder="••••••••" required minLength={6} autoComplete="new-password"
+          />
+          <button type="submit" disabled={loading || code.length < 6} className="btn-resonance">
+            {loading ? 'Resetting…' : 'Reset Password'}
+          </button>
+        </form>
+      )}
+    </AuthShell>
   );
 }

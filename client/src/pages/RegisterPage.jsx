@@ -1,63 +1,61 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
+import AuthShell from '../components/AuthShell';
+import AuthField from '../components/AuthField';
 
 export default function RegisterPage() {
   const [username, setUsername] = useState('');
-  const [usernameStatus, setUsernameStatus] = useState(''); // '', 'checking', 'available', 'taken', 'invalid'
-  const [usernameReason, setUsernameReason] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [usernameStatus, setUsernameStatus] = useState(''); // 'checking', 'available', 'taken', 'invalid'
+  const [usernameReason, setUsernameReason] = useState('');
   const navigate = useNavigate();
 
-  // Debounced username checking effect
+  // Debounced username check
   useEffect(() => {
-    if (!username) {
+    if (username.length < 3) {
       setUsernameStatus('');
       setUsernameReason('');
       return;
     }
 
-    const trimmed = username.trim();
-    if (trimmed.length < 3) {
-      setUsernameStatus('invalid');
-      setUsernameReason('Must be at least 3 characters');
-      return;
-    }
-
-    const alphanumeric = /^[a-zA-Z0-9_]+$/;
-    if (!alphanumeric.test(trimmed)) {
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
       setUsernameStatus('invalid');
       setUsernameReason('Only letters, numbers, and underscores allowed');
       return;
     }
 
-    setUsernameStatus('checking');
-    setUsernameReason('');
-
-    const handler = setTimeout(async () => {
+    const checkUsername = async () => {
+      setUsernameStatus('checking');
       try {
-        const { data } = await api.get(`/auth/check-username?username=${encodeURIComponent(trimmed)}`);
+        const { data } = await api.get(`/auth/check-username?username=${username}`);
         if (data.available) {
           setUsernameStatus('available');
         } else {
           setUsernameStatus('taken');
-          setUsernameReason(data.reason || 'Already taken');
+          setUsernameReason('Username is already taken');
         }
       } catch (err) {
-        console.warn('[Register] Check username failed:', err);
         setUsernameStatus('');
       }
-    }, 300);
+    };
 
-    return () => clearTimeout(handler);
+    const debounce = setTimeout(checkUsername, 500);
+    return () => clearTimeout(debounce);
   }, [username]);
 
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
     setError('');
+    
+    if (usernameStatus !== 'available') {
+      setError('Please choose a valid and available username');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -68,80 +66,60 @@ export default function RegisterPage() {
     } finally {
       setLoading(false);
     }
-  }, [username, email, password, navigate]);
+  }, [username, email, password, usernameStatus, navigate]);
+
+  const usernameHint = usernameStatus && (
+    <div className="mt-1.5 ml-1 text-xs font-mono">
+      {usernameStatus === 'checking' && <span className="text-neuro-muted">Checking availability…</span>}
+      {usernameStatus === 'available' && <span className="text-neuro-success">✓ Username is available</span>}
+      {usernameStatus === 'taken' && <span className="text-neuro-danger">✗ {usernameReason}</span>}
+      {usernameStatus === 'invalid' && <span className="text-neuro-danger">⚠ {usernameReason}</span>}
+    </div>
+  );
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden px-4">
-      <div className="wave-container" aria-hidden="true">
-        <div className="spherical-wave wave-cyan" />
-        <div className="spherical-wave wave-indigo" />
-        <div className="spherical-wave wave-magenta" />
-      </div>
-
-      <div className="glass glow-accent relative z-10 w-full max-w-md rounded-3xl p-8 sm:p-10">
-        <div className="mb-8 text-center">
-          <h1 className="text-glow text-3xl font-bold tracking-tight">
-            Ba<span className="text-neuro-accent">ud</span>
-          </h1>
-          <p className="mt-2 text-sm text-neuro-muted">Create your account</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="rounded-lg bg-neuro-danger/10 px-4 py-2.5 text-sm text-neuro-danger ring-1 ring-neuro-danger/20">
-              {error}
-            </div>
-          )}
-
-          <div className="relative">
-            <input
-              type="text" value={username} onChange={(e) => setUsername(e.target.value)}
-              placeholder="Username" required autoComplete="username"
-              className="w-full rounded-xl border border-neuro-border bg-neuro-bg/60 px-5 py-3.5 text-base text-neuro-text placeholder-neuro-muted outline-none transition-smooth focus:border-neuro-accent/50 focus:ring-2 focus:ring-neuro-accent/20"
-            />
-            {usernameStatus && (
-              <div className="mt-1.5 ml-1 text-xs">
-                {usernameStatus === 'checking' && (
-                  <span className="text-neuro-muted">Checking availability...</span>
-                )}
-                {usernameStatus === 'available' && (
-                  <span className="text-neuro-success">✓ Username is available</span>
-                )}
-                {usernameStatus === 'taken' && (
-                  <span className="text-neuro-danger">✗ {usernameReason}</span>
-                )}
-                {usernameStatus === 'invalid' && (
-                  <span className="text-neuro-danger">⚠ {usernameReason}</span>
-                )}
-              </div>
-            )}
-          </div>
-
-          <input
-            type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email" required autoComplete="email"
-            className="w-full rounded-xl border border-neuro-border bg-neuro-bg/60 px-5 py-3.5 text-base text-neuro-text placeholder-neuro-muted outline-none transition-smooth focus:border-neuro-accent/50 focus:ring-2 focus:ring-neuro-accent/20"
-          />
-
-          <input
-            type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password (min 6 chars)" required minLength={6} autoComplete="new-password"
-            className="w-full rounded-xl border border-neuro-border bg-neuro-bg/60 px-5 py-3.5 text-base text-neuro-text placeholder-neuro-muted outline-none transition-smooth focus:border-neuro-accent/50 focus:ring-2 focus:ring-neuro-accent/20"
-          />
-
-          <button type="submit" disabled={loading || usernameStatus === 'taken' || usernameStatus === 'invalid' || usernameStatus === 'checking'}
-            className="w-full rounded-xl bg-neuro-accent px-5 py-3.5 text-base font-semibold text-white transition-smooth hover:bg-neuro-accent/90 hover:shadow-lg hover:shadow-neuro-accent/20 active:scale-[0.98] disabled:opacity-40">
-            {loading ? 'Creating account…' : 'Create Account'}
-          </button>
-        </form>
-
-        <p className="mt-6 text-center text-sm text-neuro-muted">
+    <AuthShell
+      title={<>Ba<span className="text-neuro-accent">ud</span></>}
+      subtitle="Create your account"
+      footer={
+        <span>
           Already have an account?{' '}
           <Link to="/login" className="text-neuro-accent transition-smooth hover:underline">
             Sign in
           </Link>
-        </p>
-      </div>
-    </div>
+        </span>
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && <div className="auth-alert error mb-4">{error}</div>}
+
+        <AuthField
+          id="username" label="Username" type="text"
+          value={username} onChange={(e) => setUsername(e.target.value)}
+          placeholder="jane_doe" required autoComplete="username"
+          after={usernameHint}
+        />
+
+        <AuthField
+          id="email" label="Email" type="email"
+          value={email} onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@domain.com" required autoComplete="email"
+        />
+
+        <AuthField
+          id="password" label="Password (min 6 chars)" type="password"
+          value={password} onChange={(e) => setPassword(e.target.value)}
+          placeholder="••••••••" required minLength={6} autoComplete="new-password"
+        />
+
+        <button
+          type="submit"
+          disabled={loading || usernameStatus === 'taken' || usernameStatus === 'invalid' || usernameStatus === 'checking'}
+          className="btn-resonance"
+        >
+          {loading ? 'Creating account…' : 'Create Account'}
+        </button>
+      </form>
+    </AuthShell>
   );
 }

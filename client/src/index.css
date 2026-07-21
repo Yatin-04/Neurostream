@@ -74,60 +74,183 @@
   }
 }
 
-/* ── Cognitive Resonance Spherical Waves ── */
-.wave-container {
+/* ───────────────────────────────────────────
+   Auth pages — Resonance Field background
+   Elevates the earlier flat spherical-wave blobs into
+   something that encodes the product's two real sensors:
+   the wireframe sphere = gaze/head-pose (yaw/pitch are
+   spherical coordinates), the expanding rings = voice-
+   activity waveform. Pure SVG/CSS, no render loop —
+   deliberate, since the product's whole pitch is cutting
+   wasted client-side compute. Uses the existing Synapse
+   Cyan / Deep Indigo / Neural Magenta trio.
+   ─────────────────────────────────────────── */
+
+.resonance-field {
   position: absolute;
   inset: 0;
   overflow: hidden;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 0;
   pointer-events: none;
 }
 
-.spherical-wave {
+.resonance-glow {
   position: absolute;
-  border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
-  animation: blob-spin 20s linear infinite;
-  mix-blend-mode: screen;
-  filter: blur(40px);
-  opacity: 0.6;
-  will-change: transform, border-radius;
-  transition: all 0.5s ease-in-out;
+  border-radius: 50%;
+  filter: blur(100px);
+  will-change: transform;
 }
 
-.wave-cyan {
-  width: 60vw;
-  height: 60vw;
-  max-width: 600px;
-  max-height: 600px;
-  background: radial-gradient(circle at center, #06b6d4 0%, transparent 60%);
-  top: 10%;
-  left: 20%;
-  animation-duration: 25s;
-  animation-direction: alternate;
+.resonance-glow.glow-1 {
+  width: 460px; height: 460px;
+  background: radial-gradient(circle, rgba(224, 122, 95, 0.16) 0%, transparent 70%);
+  top: -8%; right: 5%;
+  animation: resonance-drift-1 22s ease-in-out infinite;
 }
 
-.wave-indigo {
-  width: 50vw;
-  height: 50vw;
-  max-width: 500px;
-  max-height: 500px;
-  background: radial-gradient(circle at center, #4f46e5 0%, transparent 60%);
-  bottom: 10%;
-  right: 15%;
-  animation-duration: 22s;
-  animation-direction: reverse;
+.resonance-glow.glow-2 {
+  width: 420px; height: 420px;
+  background: radial-gradient(circle, rgba(244, 162, 97, 0.12) 0%, transparent 70%);
+  bottom: -5%; left: 0%;
+  animation: resonance-drift-2 26s ease-in-out infinite;
 }
 
-.wave-magenta {
-  width: 55vw;
-  height: 55vw;
-  max-width: 550px;
-  max-height: 550px;
-  background: radial-gradient(circle at center, #d946ef 0%, transparent 60%);
-  top: 30%;
-  left: 30%;
-  animation-duration: 28s;
+@keyframes resonance-drift-1 {
+  0%, 100% { transform: translate(0, 0); }
+  50%      { transform: translate(-40px, 30px); }
+}
+@keyframes resonance-drift-2 {
+  0%, 100% { transform: translate(0, 0); }
+  50%      { transform: translate(30px, -30px); }
+}
+
+.resonance-sphere-svg {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: min(120vw, 1100px);
+  height: min(120vw, 1100px);
+  transform: translate(-50%, -50%);
+}
+
+.resonance-mesh {
+  transform-origin: 400px 400px;
+  animation: resonance-spin 90s linear infinite;
+}
+
+@keyframes resonance-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.resonance-node {
+  animation: resonance-node-pulse 3.6s ease-in-out infinite;
+}
+
+@keyframes resonance-node-pulse {
+  0%, 100% { opacity: 0.25; r: 3.5; }
+  50%      { opacity: 1;    r: 5.5; }
+}
+
+.resonance-ring {
+  animation: resonance-ping 6s cubic-bezier(0.2, 0.6, 0.4, 1) infinite;
+}
+
+@keyframes resonance-ping {
+  0%   { r: 30;  opacity: 0.55; }
+  100% { r: 380; opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .resonance-mesh, .resonance-node, .resonance-ring,
+  .resonance-glow.glow-1, .resonance-glow.glow-2 {
+    animation: none;
+  }
+}
+
+/* ── Auth panel + form elements ──────────── */
+
+.auth-panel {
+  position: relative;
+  background: rgba(28, 28, 31, 0.72);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(232, 122, 93, 0.12);
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.4);
+}
+
+/* Live-connection hairline across the top edge */
+.auth-panel::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 14%; right: 14%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #E07A5F, #F4A261, #E76F51, transparent);
+  opacity: 0.7;
+}
+
+.field-label {
+  display: block;
+  margin: 0 0 0.375rem 0.125rem;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #a8a29e;
+}
+
+.field-input {
+  width: 100%;
+  border-radius: 0.65rem;
+  border: 1px solid #2E2E32;
+  background: rgba(17, 17, 19, 0.6);
+  padding: 0.85rem 1.1rem;
+  font-size: 0.95rem;
+  color: #F5F5F4;
+  outline: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.field-input::placeholder { color: #78716c; opacity: 0.7; }
+.field-input:focus {
+  border-color: rgba(232, 122, 93, 0.5);
+  box-shadow: 0 0 0 3px rgba(232, 122, 93, 0.15);
+}
+.field-input.code {
+  text-align: center;
+  font-size: 1.5rem;
+  letter-spacing: 0.5em;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+.btn-resonance {
+  width: 100%;
+  border-radius: 0.65rem;
+  background: #E87A5D;
+  padding: 0.85rem 1.1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #0c0a09;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.btn-resonance:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow: 0 0 24px rgba(232, 122, 93, 0.3);
+}
+.btn-resonance:active:not(:disabled) { transform: scale(0.98); }
+.btn-resonance:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.auth-alert {
+  border-radius: 0.55rem;
+  padding: 0.65rem 1rem;
+  font-size: 0.85rem;
+}
+.auth-alert.error {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.2);
+}
+.auth-alert.success {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+  box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.2);
 }

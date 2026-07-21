@@ -8,19 +8,21 @@ export default {
   theme: {
     extend: {
       colors: {
-        'neuro-bg':      '#09090b',   // Deep void
-        'neuro-surface': '#18181b',   // Darker surface
-        'neuro-border':  '#27272a',   // Subtle borders
-        'neuro-accent':  '#06b6d4',   // Synapse Cyan
-        'neuro-indigo':  '#4f46e5',   // Deep Indigo
-        'neuro-magenta': '#d946ef',   // Neural Magenta
-        'neuro-success': '#22c55e',   // Green
-        'neuro-danger':  '#ef4444',   // Red
-        'neuro-text':    '#f8fafc',   // Crisp white text
-        'neuro-muted':   '#94a3b8',   // Slate muted text
+        neuro: {
+          bg: '#111113', // Deep charcoal/warm black
+          surface: '#1C1C1F', // Slightly elevated surface
+          border: '#2E2E32', // Subtle borders
+          accent: '#E87A5D', // Warm Terracotta/Coral for human touch
+          text: '#F5F5F4', // Soft stone white
+          muted: '#A8A29E', // Warm gray
+          danger: '#ef4444',
+          success: '#22c55e',
+          warning: '#eab308',
+        },
       },
       fontFamily: {
         sans: ['Outfit', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
       },
       animation: {
         'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
