@@ -93,43 +93,29 @@ app.get('/health', (_req, res) => {
  *   1. Google public STUN server (always available)
  *   2. Metered.ca TURN servers (when env vars are set)
  */
-app.get('/api/turn-credentials', (_req, res) => {
-  const iceServers = [
-    // Free public STUN — always included
-    { urls: 'stun:stun.l.google.com:19302' },
-  ];
-
-  const turnUrl = process.env.METERED_TURN_URL || 'neurostream.metered.live';
-  const turnUsername = process.env.METERED_TURN_USERNAME || '9c0c7e3e24e70c41faf4dd95';
-  const turnCredential = process.env.METERED_TURN_CREDENTIAL || 'kzWdoHdimwNjV8A1';
-
-  // Append TURN servers only when credentials are configured
-  if (turnUrl && turnUsername && turnCredential) {
-    iceServers.push(
-      {
-        urls: `turn:${turnUrl}:80?transport=udp`,
-        username: turnUsername,
-        credential: turnCredential,
-      },
-      {
-        urls: `turn:${turnUrl}:80?transport=tcp`,
-        username: turnUsername,
-        credential: turnCredential,
-      },
-      {
-        urls: `turn:${turnUrl}:443?transport=tcp`,
-        username: turnUsername,
-        credential: turnCredential,
-      },
-      {
-        urls: `turns:${turnUrl}:443?transport=tcp`,
-        username: turnUsername,
-        credential: turnCredential,
-      },
-    );
+app.get('/api/turn-credentials', async (_req, res) => {
+  try {
+    const apiKey = process.env.METERED_API_KEY || '61dc3cd28bae519044d4f3c2194628d82191';
+    const response = await fetch(`https://baud-mesh.metered.live/api/v1/turn/credentials?apiKey=${apiKey}`);
+    
+    if (!response.ok) {
+      throw new Error(`Metered API error: ${response.status}`);
+    }
+    
+    const meteredIceServers = await response.json();
+    
+    // Combine free STUN with Metered TURN servers
+    const iceServers = [
+      { urls: 'stun:stun.l.google.com:19302' },
+      ...meteredIceServers
+    ];
+    
+    res.json({ iceServers });
+  } catch (error) {
+    console.error('Failed to fetch TURN credentials:', error);
+    // Fallback to STUN only
+    res.json({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
   }
-
-  res.json({ iceServers });
 });
 
 // ── HTTP Server + Socket.io ─────────────────────────────────────
