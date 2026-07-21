@@ -32,7 +32,7 @@ export default function useCognitiveLoop({
   const throttleStartRef = useRef(null);
 
   // Constants
-  const THROTTLE_DELAY_MS = 3000;
+  const THROTTLE_DELAY_MS = 5000; // Increased from 3000ms to 5000ms to allow longer pauses while teaching
   const NORMAL_BITRATE_BPS = 2_500_000; // 2.5 Mbps
   const THROTTLE_BITRATE_BPS = 50_000; // 50 kbps
   
@@ -106,7 +106,7 @@ export default function useCognitiveLoop({
 
     await Promise.all(promises);
 
-    if (applied && isThrottled) {
+    if (isThrottled) {
       setIsThrottled(false);
       const duration = Date.now() - (throttleStartRef.current || Date.now());
       setThrottleEvents((prev) => [

@@ -44,11 +44,11 @@ export default function useVAD(mediaStream) {
             }
           },
           // Configuration for speech thresholds
-          positiveSpeechThreshold: 0.8,
-          negativeSpeechThreshold: 0.65,
+          positiveSpeechThreshold: 0.5, // Lowered from 0.8 to be more sensitive to speech
+          negativeSpeechThreshold: 0.35, // Lowered from 0.65
           minSpeechFrames: 3, // Requires 3 continuous frames of speech to trigger
           preSpeechPadFrames: 1,
-          redemptionFrames: 8 // Allows ~250ms of silence (breathing, pausing) before ending speech
+          redemptionFrames: 60 // Allows ~1.8 seconds of silence (breathing, pausing) before ending speech
         });
         
         if (active) {
