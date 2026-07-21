@@ -74,7 +74,8 @@ export default function RoomPage() {
   const { isSpeaking, isVADLoaded } = useVAD(localStream);
 
   // F2: Telemetry HUD
-  const { stats, aggregated, history, isPolling } = useWebRTCStats(pcs.current, 500);
+  const cameraTrackId = localStream?.getVideoTracks()[0]?.id;
+  const { stats, aggregated, history, isPolling } = useWebRTCStats(pcs.current, 500, cameraTrackId);
   const [hudExpanded, setHudExpanded] = useState(false);
 
   useEffect(() => { localStreamRef.current = localStream; }, [localStream]);
@@ -108,6 +109,8 @@ export default function RoomPage() {
   const effectiveAttentive = scriptedAttentive !== null ? scriptedAttentive : isAttentive;
   const effectiveSpeaking = scriptedSpeaking !== null ? scriptedSpeaking : isSpeaking;
 
+  const screenTrackId = screenStream?.getVideoTracks()[0]?.id;
+
   // ── Cognitive Control Loop (F5) ────────────────────────────────
   const {
     isThrottled,
@@ -117,11 +120,11 @@ export default function RoomPage() {
   } = useCognitiveLoop({
     isAttentive: effectiveAttentive,
     isSpeaking: effectiveSpeaking,
-    hasVideo,
-    hasAudio,
+    hasVideo: isVideoEnabled,
+    hasAudio: isAudioEnabled,
     senders: activeSenders,
     isEnabled: aiEnabled,
-    isScreenSharing,
+    screenTrackId,
   });
 
   // ── Fetch TURN credentials ─────────────────────────────────────

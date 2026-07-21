@@ -48,8 +48,13 @@ export default function ForgotPasswordPage() {
 
   return (
     <AuthShell
-      title="Reset password"
-      subtitle={step === 'request' ? 'Enter your email to receive a reset code' : 'Enter the code and your new password'}
+      title={
+        <div className="flex items-center justify-center gap-3">
+          <img src="/favicon.svg" alt="Baud Logo" className="h-10 w-10 drop-shadow-md" />
+          <span>Baud</span>
+        </div>
+      }
+      subtitle={step === 'request' ? 'Reset password. Enter your email to receive a reset code.' : 'Reset password. Enter the code and your new password.'}
       footer={
         <Link to="/login" className="transition-smooth hover:text-neuro-accent">
           ← Back to sign in

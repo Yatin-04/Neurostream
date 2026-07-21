@@ -79,7 +79,12 @@ export default function RegisterPage() {
 
   return (
     <AuthShell
-      title={<>Ba<span className="text-neuro-accent">ud</span></>}
+      title={
+        <div className="flex items-center justify-center gap-3">
+          <img src="/favicon.svg" alt="Baud Logo" className="h-10 w-10 drop-shadow-md" />
+          <span>Baud</span>
+        </div>
+      }
       subtitle="Create your account"
       footer={
         <span>

@@ -22,7 +22,7 @@ export default function useCognitiveLoop({
   hasAudio,
   senders,
   isEnabled,
-  isScreenSharing,
+  screenTrackId,
 }) {
   const [isThrottled, setIsThrottled] = useState(false);
   const [bytesSaved, setBytesSaved] = useState(0);
@@ -44,7 +44,8 @@ export default function useCognitiveLoop({
     const promises = senders.map(async (sender) => {
       if (!sender.track || sender.track.kind !== 'video') return;
       
-      // Screen Share Immunity: Check if this is a display track
+      // Screen Share Immunity: Check if this track is the screen share track, or has displaySurface
+      if (screenTrackId && sender.track.id === screenTrackId) return;
       const settings = sender.track.getSettings();
       if (settings.displaySurface) return;
 
@@ -74,7 +75,7 @@ export default function useCognitiveLoop({
       ]);
       console.log('[CognitiveLoop] Throttled outbound video');
     }
-  }, [senders, isThrottled]);
+  }, [senders, isThrottled, screenTrackId]);
 
   // Actuator: Restore full quality to camera senders
   const restoreQuality = useCallback(async () => {
@@ -84,6 +85,7 @@ export default function useCognitiveLoop({
     const promises = senders.map(async (sender) => {
       if (!sender.track || sender.track.kind !== 'video') return;
       
+      if (screenTrackId && sender.track.id === screenTrackId) return;
       const settings = sender.track.getSettings();
       if (settings.displaySurface) return;
 
@@ -157,7 +159,7 @@ export default function useCognitiveLoop({
         restoreQuality();
       }
     }
-  }, [isAttentive, isSpeaking, hasVideo, hasAudio, isEnabled, isScreenSharing, isThrottled, throttleQuality, restoreQuality]);
+  }, [isAttentive, isSpeaking, hasVideo, hasAudio, isEnabled, screenTrackId, isThrottled, throttleQuality, restoreQuality]);
 
   // Bandwidth accumulation loop
   useEffect(() => {

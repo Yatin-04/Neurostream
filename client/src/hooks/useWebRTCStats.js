@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 
-export default function useWebRTCStats(peerConnections, intervalMs = 1000) {
+export default function useWebRTCStats(peerConnections, intervalMs = 1000, cameraTrackId = null) {
   const [stats, setStats] = useState(new Map());
   const [history, setHistory] = useState([]);
   const [aggregated, setAggregated] = useState({
@@ -63,6 +63,20 @@ export default function useWebRTCStats(peerConnections, intervalMs = 1000) {
 
           report.forEach(stat => {
             if (stat.type === 'outbound-rtp' && stat.kind === 'video') {
+              // Only track the camera feed, ignore screen share.
+              // To do this, we check if the track corresponds to the camera.
+              // We'll use the trackId to look up the track stat, or just assume the first video track if no cameraTrackId is provided.
+              // Wait, a better way is to check the track's id directly if we pass it, or we can look at the sender.
+              // For now, let's just use the `cameraTrackId` from props.
+              if (cameraTrackId) {
+                const trackStat = stat.trackId ? report.get(stat.trackId) : null;
+                const mediaSourceStat = stat.mediaSourceId ? report.get(stat.mediaSourceId) : null;
+                const statTrackIdentifier = (trackStat && trackStat.trackIdentifier) || (mediaSourceStat && mediaSourceStat.trackIdentifier);
+                
+                if (statTrackIdentifier && statTrackIdentifier !== cameraTrackId) {
+                  return; // Skip screen share track
+                }
+              }
               bytesSent = stat.bytesSent || prev.bytesSent;
               framesEncoded = stat.framesEncoded || prev.framesEncoded;
               timestamp = stat.timestamp;
@@ -163,7 +177,7 @@ export default function useWebRTCStats(peerConnections, intervalMs = 1000) {
       active = false;
       clearInterval(intervalId);
     };
-  }, [peerConnections, intervalMs]);
+  }, [peerConnections, intervalMs, cameraTrackId]);
 
   return { stats, aggregated, history, isPolling };
 }

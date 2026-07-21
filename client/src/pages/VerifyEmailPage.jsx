@@ -72,8 +72,13 @@ export default function VerifyEmailPage() {
   if (!emailSubmitted) {
     return (
       <AuthShell
-        title="Verify your email"
-        subtitle="Enter your email address to continue verification."
+        title={
+          <div className="flex items-center justify-center gap-3">
+            <img src="/favicon.svg" alt="Baud Logo" className="h-10 w-10 drop-shadow-md" />
+            <span>Baud</span>
+          </div>
+        }
+        subtitle="Verify your email"
         footer={
           <button onClick={() => navigate('/register')} className="transition-smooth hover:text-neuro-accent">
             Need an account? Register
@@ -96,10 +101,15 @@ export default function VerifyEmailPage() {
 
   return (
     <AuthShell
-      title="Verify your email"
+      title={
+        <div className="flex items-center justify-center gap-3">
+          <img src="/favicon.svg" alt="Baud Logo" className="h-10 w-10 drop-shadow-md" />
+          <span>Baud</span>
+        </div>
+      }
       subtitle={
         <>
-          We sent a 6-digit code to <span className="font-medium text-neuro-text">{email}</span>
+          Verify your email. We sent a 6-digit code to <span className="font-medium text-neuro-text">{email}</span>
           <button onClick={() => setEmailSubmitted(false)} className="ml-2 text-xs text-neuro-accent hover:underline">
             (change)
           </button>
