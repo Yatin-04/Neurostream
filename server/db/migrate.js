@@ -15,6 +15,27 @@ CREATE TABLE IF NOT EXISTS users (
   otp_expires_at TIMESTAMPTZ,
   created_at    TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS user_stats (
+  user_id                     INT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  total_bandwidth_saved_bytes BIGINT DEFAULT 0,
+  updated_at                  TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS recent_rooms (
+  user_id         INT REFERENCES users(id) ON DELETE CASCADE,
+  room_slug       VARCHAR(255) NOT NULL,
+  last_visited_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (user_id, room_slug)
+);
+
+CREATE TABLE IF NOT EXISTS recent_peers (
+  user_id           INT REFERENCES users(id) ON DELETE CASCADE,
+  peer_user_id      INT REFERENCES users(id) ON DELETE CASCADE,
+  peer_username     VARCHAR(50) NOT NULL,
+  last_connected_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (user_id, peer_user_id)
+);
 `;
 
 async function run() {

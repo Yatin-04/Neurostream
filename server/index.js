@@ -46,6 +46,9 @@ app.use(cookieParser());
 // ── Auth Routes ─────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
 
+import telemetryRoutes from './src/routes/telemetry.js';
+app.use('/api/telemetry', telemetryRoutes);
+
 // ── State ───────────────────────────────────────────────────────
 // rooms:       roomId → Set<socketId>   — who is in each room
 // socketRooms: socketId → roomId        — reverse lookup for cleanup

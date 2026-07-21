@@ -14,6 +14,7 @@ import useBenchmarkMode from '../hooks/useBenchmarkMode';
 import TelemetryHUD from '../components/TelemetryHUD';
 import BenchmarkHUD from '../components/BenchmarkHUD';
 import { BandwidthSavedCounter, SessionSummary } from '../components/BandwidthSaved';
+import api from '../utils/api';
 
 const DEFAULT_ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -406,9 +407,25 @@ export default function RoomPage() {
   // ── Cleanup ────────────────────────────────────────────────────
   useEffect(() => () => { pcs.current.forEach((pc) => pc.close()); pcs.current.clear(); }, []);
 
-  const handleLeave = useCallback(() => {
+  const handleLeave = useCallback(async () => {
     pcs.current.forEach((pc) => pc.close());
     pcs.current.clear();
+
+    // Collect peer usernames
+    const connectedPeers = Array.from(peerNames.values());
+
+    // Report telemetry to backend
+    if (user) {
+      try {
+        await api.post('/api/telemetry/report', {
+          roomSlug: roomId,
+          bandwidthSaved: bytesSaved,
+          connectedPeers
+        });
+      } catch (err) {
+        console.error('Failed to report telemetry:', err);
+      }
+    }
 
     // Compute session summary
     const duration = Date.now() - sessionStart;
@@ -429,7 +446,7 @@ export default function RoomPage() {
     } else {
       navigate('/');
     }
-  }, [navigate, sessionStart, throttleEvents, bytesSaved]);
+  }, [navigate, sessionStart, throttleEvents, bytesSaved, peerNames, roomId, user]);
   const handleScreenToggle = useCallback(() => {
     if (isScreenSharing) { stopScreenShare(); return; }
     // Block if another peer is already sharing
