@@ -26,6 +26,9 @@ export default function useVAD(mediaStream) {
         // Initialize VAD and point it directly at our existing media stream
         const myvad = await MicVAD.new({
           stream: mediaStream,
+          ortConfig: (ort) => {
+            ort.env.wasm.wasmPaths = '/';
+          },
           onSpeechStart: () => {
             if (active) {
               console.log('[SileroVAD] Speech started');

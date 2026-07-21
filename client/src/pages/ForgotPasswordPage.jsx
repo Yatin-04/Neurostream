@@ -20,7 +20,7 @@ export default function ForgotPasswordPage() {
     setLoading(true);
 
     try {
-      await api.post('/api/auth/forgot-password', { email });
+      await api.post('/auth/forgot-password', { email });
       setStep('reset');
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to send reset code');
@@ -36,7 +36,7 @@ export default function ForgotPasswordPage() {
     setLoading(true);
 
     try {
-      await api.post('/api/auth/reset-password', { email, code, newPassword });
+      await api.post('/auth/reset-password', { email, code, newPassword });
       setMessage('Password reset successful. Redirecting to login...');
       setTimeout(() => navigate('/login'), 2000);
     } catch (err) {

@@ -42,7 +42,7 @@ export default function VerifyEmailPage() {
     setResendLoading(true);
 
     try {
-      await api.post('/api/auth/resend-verification', { email });
+      await api.post('/auth/resend-otp', { email });
       setSuccess('Verification code resent. Check your inbox.');
       setCooldown(60);
     } catch (err) {
@@ -59,7 +59,7 @@ export default function VerifyEmailPage() {
     setLoading(true);
 
     try {
-      const { user, token } = await api.post('/api/auth/verify-email', { email, code });
+      const { user, token } = await api.post('/auth/verify-email', { email, code });
       login(user, token);
       navigate('/app', { replace: true });
     } catch (err) {
