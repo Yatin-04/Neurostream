@@ -93,7 +93,7 @@ export default function LandingPage() {
 
   useEffect(() => {
     if (user) {
-      api.get('/api/telemetry/dashboard')
+      api.get('/telemetry/dashboard')
         .then(res => {
           setStats(res.data);
           setLoadingStats(false);

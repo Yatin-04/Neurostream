@@ -417,7 +417,7 @@ export default function RoomPage() {
     // Report telemetry to backend
     if (user) {
       try {
-        await api.post('/api/telemetry/report', {
+        await api.post('/telemetry/report', {
           roomSlug: roomId,
           bandwidthSaved: bytesSaved,
           connectedPeers
