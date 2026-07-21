@@ -49,9 +49,9 @@ function formatBytes(bytes) {
 // ── Background Component ─────────────────────────────────────────────
 function ElementalBackground() {
   return (
-    <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden bg-[#0a0a0a]">
+    <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden bg-[#0d0d0f]">
       {/* Subtle radial gradient to give depth */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-neuro-surface/40 via-[#0a0a0a] to-[#0a0a0a]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-neuro-surface/60 via-[#0d0d0f] to-[#0a0a0a]" />
       
       {/* Very faint, slow sweeping light ray */}
       <div className="absolute top-[-50%] left-[-20%] w-[140%] h-[200%] opacity-20 transform rotate-12"
@@ -151,7 +151,7 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div className="relative min-h-screen flex flex-col px-4 py-8 sm:px-8 sm:py-12 bg-[#0a0a0a] text-neuro-text font-sans">
+    <div className="relative min-h-screen flex flex-col px-4 py-8 sm:px-8 sm:py-12 bg-[#0d0d0f] text-neuro-text font-sans">
       <ElementalBackground />
       
       <div className="relative z-10 w-full max-w-5xl mx-auto flex flex-col flex-1">
@@ -159,7 +159,7 @@ export default function LandingPage() {
         {/* ── Header ────────────────────────────────────────── */}
         <header className="flex justify-between items-center mb-12 animate-in fade-in slide-in-from-top-4 duration-700">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-neuro-surface shadow-md ring-1 ring-neuro-border backdrop-blur-sm">
+            <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-neuro-surface/80 shadow-lg ring-1 ring-white/10 backdrop-blur-md">
               <img src="/favicon.svg" alt="Baud" className="h-6 w-6" />
             </div>
             <span className="text-xl font-bold tracking-tight text-white/90">Baud</span>
@@ -185,7 +185,7 @@ export default function LandingPage() {
           <div className="lg:col-span-2 flex flex-col gap-6">
             
             {/* The Nexus (Input) */}
-            <section className="glass rounded-2xl p-8 ring-1 ring-neuro-border/50 shadow-2xl relative overflow-hidden group">
+            <section className="glass bg-neuro-surface/30 rounded-2xl p-8 ring-1 ring-white/10 shadow-2xl relative overflow-hidden group">
               {/* Subtle accent glow on hover */}
               <div className="absolute inset-0 bg-gradient-to-br from-neuro-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
               
@@ -200,7 +200,7 @@ export default function LandingPage() {
                   onChange={(e) => { setRoomInput(e.target.value); setCreatedRoomId(''); }}
                   onKeyDown={(e) => { if (e.key === 'Enter') handleCreateRoom(); }}
                   placeholder="_"
-                  className="w-full bg-neuro-bg/80 border border-neuro-border/80 rounded-xl py-4 pl-10 pr-12 text-lg text-white font-mono placeholder-neuro-muted/30 outline-none focus:ring-1 focus:ring-neuro-accent focus:border-neuro-accent transition-all shadow-inner"
+                  className="w-full bg-[#0a0a0a]/50 border border-white/10 rounded-xl py-4 pl-10 pr-12 text-lg text-white font-mono placeholder-neuro-muted/30 outline-none focus:ring-1 focus:ring-neuro-accent focus:border-neuro-accent transition-all shadow-inner"
                   spellCheck={false}
                   autoComplete="off"
                 />
@@ -238,7 +238,7 @@ export default function LandingPage() {
             </section>
 
             {/* Impact Metric */}
-            <section className="glass rounded-2xl p-6 ring-1 ring-neuro-border/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <section className="glass bg-neuro-surface/30 rounded-2xl p-6 ring-1 ring-white/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                 <h3 className="text-xs uppercase tracking-widest text-neuro-muted mb-1">Lifetime Bandwidth Saved</h3>
                 <div className="flex items-baseline gap-2">
@@ -259,7 +259,7 @@ export default function LandingPage() {
           <div className="flex flex-col gap-6">
             
             {/* Recent Peers */}
-            <section className="glass rounded-2xl p-6 ring-1 ring-neuro-border/50 flex-1 flex flex-col">
+            <section className="glass bg-neuro-surface/30 rounded-2xl p-6 ring-1 ring-white/10 flex-1 flex flex-col shadow-xl">
               <h3 className="text-sm font-medium text-white/90 mb-4 flex items-center justify-between">
                 <span>Recent Peers</span>
                 <svg className="h-4 w-4 text-neuro-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" /></svg>
@@ -292,7 +292,7 @@ export default function LandingPage() {
             </section>
 
             {/* Recent Rooms */}
-            <section className="glass rounded-2xl p-6 ring-1 ring-neuro-border/50 flex-1 flex flex-col">
+            <section className="glass bg-neuro-surface/30 rounded-2xl p-6 ring-1 ring-white/10 flex-1 flex flex-col shadow-xl">
               <h3 className="text-sm font-medium text-white/90 mb-4 flex items-center justify-between">
                 <span>Recent Coordinates</span>
                 <svg className="h-4 w-4 text-neuro-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 21v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21m0 0h4.5V3.545M12.75 21h7.5V10.75M2.25 21h1.5m18 0h-18M2.25 9l4.5-1.636M18.75 3l-1.5.545m0 6.205 3 1m1.5.5-1.5-.5M6.75 7.364V3h-3v18m3-13.636 10.5-3.819" /></svg>
