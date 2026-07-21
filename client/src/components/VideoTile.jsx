@@ -33,6 +33,8 @@ export default function VideoTile({
     if (!video) return;
     if (stream) {
       video.srcObject = stream;
+      // Explicitly play to avoid black screen on srcObject assignment
+      video.play().catch(err => console.warn('Autoplay prevented:', err));
     } else {
       video.srcObject = null;
     }

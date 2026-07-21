@@ -189,12 +189,11 @@ export default function RoomPage() {
 
       // Clean up when track ends or is removed (screen share stop)
       const checkRemove = () => {
-        if (stream.getTracks().every((t) => t.readyState === 'ended' || t.muted)) {
+        if (stream.getTracks().every((t) => t.readyState === 'ended')) {
           removeRemoteStream(key);
         }
       };
       event.track.addEventListener('ended', checkRemove);
-      event.track.addEventListener('mute', () => setTimeout(checkRemove, 300));
       stream.addEventListener('removetrack', checkRemove);
     };
 
